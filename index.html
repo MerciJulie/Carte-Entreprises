@@ -736,42 +736,35 @@ tSel.selectedIndex = 0;
         + '<div class="footer">SAS SENIORALIS – Repère ToiT – Entreprise Solidaire d’Utilité Sociale | 9 avenue Val de Fontenay, 94120 Fontenay-sous-Bois | SIRET 824 513 527 00021 – RCS Créteil | Tél. 06 59 55 48 48 – repere-toit@merci-julie.fr</div>'
         + '<script>window.addEventListener("load",function(){try{window.print()}catch(e){}});<\/script>'
         + '
-<!-- === Auto-load local JSON file (for GitHub Pages, same folder) === -->
+<!-- === Auto-load local JSON file (GitHub Pages, même dossier) === -->
 <script>
-// Place 'entreprises_export.json' in the same folder as this HTML on GitHub Pages.
-const LOCAL_JSON_PATH = "./entreprises_export.json";
-
-async function loadLocalJsonAndInit(){
-  try{
-    const url = LOCAL_JSON_PATH + "?t=" + Date.now(); // cache-busting
-    const res = await fetch(url, { headers: { "Accept": "application/json" } });
-    if(!res.ok){
-      throw new Error("HTTP " + res.status + " when fetching " + LOCAL_JSON_PATH);
+(function(){
+  const LOCAL_JSON_PATH = "./entreprises_export.json";
+  async function autoload(){
+    try{
+      const res = await fetch(LOCAL_JSON_PATH + "?t=" + Date.now(), { headers: { "Accept": "application/json" } });
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : (Array.isArray(data.data) ? data.data : null);
+      if(!arr) throw new Error("Format inattendu: un tableau est requis.");
+      // Même pipeline que l'import manuel
+      window.RAW = arr;
+      if (typeof computeFacets === "function") computeFacets(window.RAW);
+      if (typeof rebuildFilters === "function") rebuildFilters();
+      if (typeof addMarkers === "function") addMarkers(window.RAW);
+      if (typeof applyFilters === "function") applyFilters(); // applique rayon/menus si déjà réglés
+    }catch(err){
+      console.warn("[AutoLoad] Échec du chargement automatique:", err);
+      // On ne masque rien : l'import manuel reste disponible
     }
-    const data = await res.json();
-    if(!Array.isArray(data)){
-      throw new Error("Le JSON attendu est un tableau d'objets (array).");
-    }
-    // Ces fonctions existent déjà dans votre fichier : computeFacets / rebuildFilters / addMarkers
-    window.RAW = data;
-    if (typeof computeFacets === "function") computeFacets(RAW);
-    if (typeof rebuildFilters === "function") rebuildFilters();
-    if (typeof addMarkers === "function") addMarkers(RAW);
-
-    // Optionnel : masquer le champ "Charger un fichier JSON" puisqu'on auto-charge
-    var jsonGroup = document.querySelector('label[for="jsonInput"]')?.parentElement;
-    if(jsonGroup){ jsonGroup.style.display = "none"; }
-  }catch(err){
-    console.error("Erreur au chargement auto du JSON local:", err);
-    alert("Impossible de charger automatiquement 'entreprises_export.json'. Vous pouvez importer le JSON manuellement.");
   }
-}
-
-if(document.readyState === "loading"){
-  document.addEventListener("DOMContentLoaded", loadLocalJsonAndInit);
-}else{
-  loadLocalJsonAndInit();
-}
+  // On attend que toute la page soit prête pour être sûr que la carte + UI existent
+  if(document.readyState === "complete"){
+    autoload();
+  }else{
+    window.addEventListener("load", autoload);
+  }
+})();
 </script>
 
 </body></html>';
@@ -820,42 +813,35 @@ if(document.readyState === "loading"){
 })();
 </script>
 
-<!-- === Auto-load local JSON file (for GitHub Pages, same folder) === -->
+<!-- === Auto-load local JSON file (GitHub Pages, même dossier) === -->
 <script>
-// Place 'entreprises_export.json' in the same folder as this HTML on GitHub Pages.
-const LOCAL_JSON_PATH = "./entreprises_export.json";
-
-async function loadLocalJsonAndInit(){
-  try{
-    const url = LOCAL_JSON_PATH + "?t=" + Date.now(); // cache-busting
-    const res = await fetch(url, { headers: { "Accept": "application/json" } });
-    if(!res.ok){
-      throw new Error("HTTP " + res.status + " when fetching " + LOCAL_JSON_PATH);
+(function(){
+  const LOCAL_JSON_PATH = "./entreprises_export.json";
+  async function autoload(){
+    try{
+      const res = await fetch(LOCAL_JSON_PATH + "?t=" + Date.now(), { headers: { "Accept": "application/json" } });
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      const arr = Array.isArray(data) ? data : (Array.isArray(data.data) ? data.data : null);
+      if(!arr) throw new Error("Format inattendu: un tableau est requis.");
+      // Même pipeline que l'import manuel
+      window.RAW = arr;
+      if (typeof computeFacets === "function") computeFacets(window.RAW);
+      if (typeof rebuildFilters === "function") rebuildFilters();
+      if (typeof addMarkers === "function") addMarkers(window.RAW);
+      if (typeof applyFilters === "function") applyFilters(); // applique rayon/menus si déjà réglés
+    }catch(err){
+      console.warn("[AutoLoad] Échec du chargement automatique:", err);
+      // On ne masque rien : l'import manuel reste disponible
     }
-    const data = await res.json();
-    if(!Array.isArray(data)){
-      throw new Error("Le JSON attendu est un tableau d'objets (array).");
-    }
-    // Ces fonctions existent déjà dans votre fichier : computeFacets / rebuildFilters / addMarkers
-    window.RAW = data;
-    if (typeof computeFacets === "function") computeFacets(RAW);
-    if (typeof rebuildFilters === "function") rebuildFilters();
-    if (typeof addMarkers === "function") addMarkers(RAW);
-
-    // Optionnel : masquer le champ "Charger un fichier JSON" puisqu'on auto-charge
-    var jsonGroup = document.querySelector('label[for="jsonInput"]')?.parentElement;
-    if(jsonGroup){ jsonGroup.style.display = "none"; }
-  }catch(err){
-    console.error("Erreur au chargement auto du JSON local:", err);
-    alert("Impossible de charger automatiquement 'entreprises_export.json'. Vous pouvez importer le JSON manuellement.");
   }
-}
-
-if(document.readyState === "loading"){
-  document.addEventListener("DOMContentLoaded", loadLocalJsonAndInit);
-}else{
-  loadLocalJsonAndInit();
-}
+  // On attend que toute la page soit prête pour être sûr que la carte + UI existent
+  if(document.readyState === "complete"){
+    autoload();
+  }else{
+    window.addEventListener("load", autoload);
+  }
+})();
 </script>
 
 </body>
