@@ -20596,25 +20596,6 @@
     "Longitude": 3.025835
   },
   {
-    "Nom de l'entreprise": "AZUROLO",
-    "Département": "06",
-    "Secteur exclusif": "",
-    "RECOMMANDATION": "A TESTER",
-    "REACTIVITE": "NON CONNUE",
-    "Téléphone": "",
-    "Mobile": "07 82 87 46 77",
-    "E-Mail": "contact@access-bain.fr",
-    "Nom personne contact": "Olivier LONGPRES",
-    "LABELS et RESEAUX": "",
-    "Signature charte de confiance": "",
-    "Travaux réalisables": "Sanitaire",
-    "Travaux réalisables 2": "",
-    "adresse": "540 PREMIERE AVENUE, 06600 Antibes",
-    "SIRET": "",
-    "Latitude": 43.6001174,
-    "Longitude": 7.0914192
-  },
-  {
     "Nom de l'entreprise": "CROUSSE TONTI",
     "Département": "06",
     "Secteur exclusif": "",
@@ -21091,7 +21072,7 @@
   },
   {
     "Nom de l'entreprise": " AZUROLO (ACCESS BAIN)",
-    "Département": "",
+    "Département": "06",
     "Secteur exclusif": "06 ET 83 ",
     "RECOMMANDATION": "A TESTER",
     "REACTIVITE": "NON CONNUE",
