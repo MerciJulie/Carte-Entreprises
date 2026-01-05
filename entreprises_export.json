@@ -3374,7 +3374,7 @@
     "Nom personne contact": "Marie REY",
     "LABELS et RESEAUX": "Handibat",
     "Signature charte de confiance": "NON",
-    "Travaux réalisables": "Sanitaire, Menuiserie, Électricité, Monte-escalier, Tout corps d'état, Carrelage, motorisation de volets, plaquiste",
+    "Travaux réalisables": "Sanitaire, Menuiserie, Électricité, Tout corps d'état, Carrelage, motorisation de volets, plaquiste",
     "Travaux réalisables 2": "",
     "adresse": "31 rue Jean Huss, 42000 SAINT ETIENNE",
     "SIRET": "",
@@ -11254,7 +11254,7 @@
     "RECOMMANDATION": "",
     "REACTIVITE": "",
     "Téléphone": "",
-    "Mobile": "07 49 59 46 31",
+    "Mobile": "04 78 25 31 06",
     "E-Mail": "",
     "Nom personne contact": "",
     "LABELS et RESEAUX": "",
@@ -21088,5 +21088,24 @@
     "SIRET": "52448427600042",
     "Latitude": 49.304561,
     "Longitude": 3.40429
+  },
+  {
+    "Nom de l'entreprise": "GML Carrelages",
+    "Département": "",
+    "Secteur exclusif": "",
+    "RECOMMANDATION": "A TESTER",
+    "REACTIVITE": "NON CONNUE",
+    "Téléphone": "",
+    "Mobile": "06 19 33 82 11",
+    "E-Mail": "gregory.leiza@hotmail.com",
+    "Nom personne contact": "LEIZA Gregory",
+    "LABELS et RESEAUX": "Aucun, CAPEB",
+    "Signature charte de confiance": "",
+    "Travaux réalisables": "Carrelage",
+    "Travaux réalisables 2": "Travaux de revêtement des sols et des murs ",
+    "adresse": "29 LOT LE HAMEAU DE LA FORET , 40170 MEZOS",
+    "SIRET": "92046290000019",
+    "Latitude": 44.0670826,
+    "Longitude": -1.1561511
   }
 ]
