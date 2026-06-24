@@ -692,7 +692,6 @@ tSel.selectedIndex = 0;
       }catch(e){}
       const items = collectVisibleMarkers();
       items.forEach(function(it){ it.dist = haversineKm({lat:ref.lat,lng:ref.lng}, {lat: it.latlng.lat, lng: it.latlng.lng}); });
-      items.sort(function(a,b){ return a.dist - b.dist; });
 
       // Ordre de préférence des recommandations (la meilleure en premier).
       // Toute valeur absente de cette liste (NON, NE PAS SOLLICITER, vide…) passe en dernier.
@@ -703,28 +702,53 @@ tSel.selectedIndex = 0;
         return i === -1 ? RECO_ORDER.length : i;
       }
 
-      let top5 = items.slice(0,5).map(function(it){ return {row: it.row, dist: it.dist, departmental: false}; });
+      // Une entreprise est "multidépartementale" si son nom apparaît sur plusieurs
+      // lignes du jeu de données complet (ex: une ligne par département/préfecture
+      // couverte). Calculé une fois sur RAW pour classer ces entreprises par
+      // recommandation plutôt que par distance, qu'elles soient dans le rayon
+      // de recherche ou ajoutées en repli.
+      const nameCounts = new Map();
+      if (typeof RAW !== 'undefined' && Array.isArray(RAW)){
+        RAW.forEach(function(row){
+          const name = field(row, ["Nom de l'entreprise","nom"]);
+          if (!name) return;
+          const key = normalize(name);
+          nameCounts.set(key, (nameCounts.get(key)||0) + 1);
+        });
+      }
+      function isDepartmentalName(key){ return (nameCounts.get(key)||0) > 1; }
 
-      // Si le rayon de recherche ne fournit pas assez de résultats, on complète
-      // avec des entreprises "multidépartementales" (même nom présent sur plusieurs
-      // lignes du jeu de données, ex: une ligne par département/préfecture couverte),
-      // même si elles sont hors du rayon choisi. Elles restent filtrées par
-      // Travaux/Labels/Charte, et sont classées par niveau de recommandation
-      // plutôt que par distance.
-      if (top5.length < 5 && typeof RAW !== 'undefined' && Array.isArray(RAW) && RAW.length){
-        const alreadyIncluded = new Set(top5.map(function(it){ return normalize(field(it.row, ["Nom de l'entreprise","nom"])); }));
+      // Entreprises locales (mono-adresse) trouvées dans le rayon : toujours
+      // prioritaires, triées par distance.
+      const localItems = items
+        .filter(function(it){ return !isDepartmentalName(normalize(field(it.row, ["Nom de l'entreprise","nom"]))); })
+        .sort(function(a,b){ return a.dist - b.dist; })
+        .map(function(it){ return {row: it.row, dist: it.dist, departmental: false, outOfRadius: false}; });
+
+      // Entreprises multidépartementales trouvées dans le rayon : on les retire
+      // du tri par distance, elles seront reclassées par recommandation plus bas.
+      const deptInRadius = items
+        .filter(function(it){ return isDepartmentalName(normalize(field(it.row, ["Nom de l'entreprise","nom"]))); })
+        .map(function(it){ return {row: it.row, dist: it.dist, departmental: true, outOfRadius: false}; });
+
+      let top5 = localItems.slice(0,5);
+      const deptSlots = 5 - top5.length;
+      const deptNamesInRadius = new Set(deptInRadius.map(function(it){ return normalize(field(it.row, ["Nom de l'entreprise","nom"])); }));
+
+      // Complète avec des entreprises multidépartementales en repli (hors rayon),
+      // pour ne pas se limiter à celles déjà détectées dans le rayon.
+      const deptOutsideRadius = [];
+      if (deptSlots > 0 && typeof RAW !== 'undefined' && Array.isArray(RAW) && RAW.length){
         const byName = new Map();
         RAW.forEach(function(row){
           const name = field(row, ["Nom de l'entreprise","nom"]);
           if (!name) return;
           const key = normalize(name);
-          if (alreadyIncluded.has(key)) return;
+          if (!isDepartmentalName(key) || deptNamesInRadius.has(key)) return;
           if (!byName.has(key)) byName.set(key, []);
           byName.get(key).push(row);
         });
-        const candidates = [];
         byName.forEach(function(rows, key){
-          if (rows.length < 2) return; // pas multidépartementale
           if (!rowMatchesFacetFilters(rows[0])) return;
           // On choisit la ligne la plus proche du point de référence pour l'affichage
           // (adresse/contact les plus pertinents pour l'utilisateur).
@@ -736,14 +760,18 @@ tSel.selectedIndex = 0;
               : Infinity;
             if (d < bestDist){ bestDist = d; best = row; }
           });
-          if (best) candidates.push({row: best, dist: bestDist, departmental: true});
+          if (best) deptOutsideRadius.push({row: best, dist: bestDist, departmental: true, outOfRadius: true});
         });
-        candidates.sort(function(a,b){
-          const r = recoRank(a.row) - recoRank(b.row);
-          return r !== 0 ? r : a.dist - b.dist;
-        });
-        top5 = top5.concat(candidates.slice(0, 5 - top5.length));
       }
+
+      // Toutes les entreprises multidépartementales (dans le rayon ou en repli)
+      // sont classées ensemble par recommandation, puis par distance en cas d'égalité.
+      const allDept = deptInRadius.concat(deptOutsideRadius);
+      allDept.sort(function(a,b){
+        const r = recoRank(a.row) - recoRank(b.row);
+        return r !== 0 ? r : a.dist - b.dist;
+      });
+      top5 = top5.concat(allDept.slice(0, deptSlots));
 
       if (!top5.length){ alert("Aucune entreprise visible à exporter (vérifiez vos filtres)."); return; }
       const refText = (document.getElementById('refAddress') && document.getElementById('refAddress').value) || (ref.label || 'Point de référence');
@@ -759,9 +787,11 @@ for (var i=0;i<top5.length;i++){
         var nom = field(r, ["Nom de l'entreprise","nom"]) || '—';
         var adr = formatAddress(r);
         var ctc = contactLine(r);
-        var deptNote = entry.departmental
+        var deptNote = entry.outOfRadius
           ? '<div class="line" style="color:#92400e;"><em>⚠ Entreprise multidépartementale, hors du rayon de recherche choisi — proposée car peu d’entreprises correspondent dans ce rayon.</em></div>'
-          : '';
+          : (entry.departmental
+              ? '<div class="line" style="color:#6b7280;"><em>Entreprise multidépartementale (classée selon son niveau de recommandation).</em></div>'
+              : '');
         bodyHtml += '<section class="card">'
                  +  '<div class="name">'+(i+1)+'. '+nom+'</div>'
                  +  '<div class="line">'+adr+'</div>'
