@@ -75,22 +75,7 @@
 
   <div id="map"></div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">// Exclusivité pour l'option (Tous) dans Travaux
-(function(){
-  const travauxSel = document.getElementById('travauxFilter');
-  if (!travauxSel) return;
-  travauxSel.addEventListener('change', () => {
-    const hasAll = Array.from(travauxSel.selectedOptions).some(o => o.value === '');
-    if (hasAll && travauxSel.selectedOptions.length > 1) {
-      Array.from(travauxSel.options).forEach(o => (o.selected = (o.value === '')));
-    } else if (!hasAll) {
-      const allOpt = Array.from(travauxSel.options).find(o => o.value === '');
-      if (allOpt) allOpt.selected = false;
-    }
-    if (typeof applyFilters === 'function') applyFilters();
-  });
-})();
-</script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
   <script>
@@ -252,7 +237,11 @@ tSel.selectedIndex = 0;
     });
   }
 
-  function applyFilters(){
+  // Renvoie true si le marqueur m respecte les filtres actuellement actifs
+  // (rayon, travaux, labels, charte). Centralisé ici pour être réutilisé
+  // à la fois par l'affichage de la carte (applyFilters) et par l'export
+  // Top 5, qui ne doit pas dépendre du regroupement visuel des clusters.
+  function markerMatchesFilters(m){
     const tSel=document.getElementById('travauxFilter');
     const lSel=document.getElementById('labelsFilter');
     const cSel=document.getElementById('charteFilter');
@@ -264,37 +253,42 @@ tSel.selectedIndex = 0;
     const lKey = lSel.value;
     const cKey = cSel.value;
 
+    const row = m.__row;
+    let ok = true;
+
+    if(refMarker&&rkm>=0){
+      const A=refMarker.getLatLng();const B=m.getLatLng();
+      const d=haversineKm({lat:A.lat,lng:A.lng},{lat:B.lat,lng:B.lng});
+      if(d>rkm) ok=false;
+    }
+
+    // Travaux: vérifier si AU MOINS UN match parmi tous les travaux
+    if(ok && tVals.size){
+      const rowCats = [...splitMulti(row["Travaux réalisables"]), ...splitMulti(row["Travaux réalisables 2"])].map(keyify);
+      ok = rowCats.some(k => tVals.has(k));
+    }
+
+    if(ok && lKey){
+      const rowLabels = splitMulti(row["LABELS et RESEAUX"]).map(keyify);
+      ok = rowLabels.includes(lKey);
+    }
+
+    if(ok && cKey){
+      const rowC = normalize(String(row["Signature charte de confiance"]||''));
+      const canon = rowC.startsWith('o') ? 'oui' : (rowC.startsWith('n') ? (rowC.includes('renseigne')?'non renseigne':'non') : rowC);
+      ok = (canon === cKey);
+    }
+
+    return ok;
+  }
+  window.markerMatchesFilters = markerMatchesFilters;
+
+  function applyFilters(){
+    const rkm=Number(document.getElementById('radiusRange').value);
     if(refCircle&&refMarker)refCircle.setRadius(rkm*1000);
     cluster.clearLayers();
-
     markers.forEach(m=>{
-      const row = m.__row;
-      let ok = true;
-
-      if(refMarker&&rkm>=0){
-        const A=refMarker.getLatLng();const B=m.getLatLng();
-        const d=haversineKm({lat:A.lat,lng:A.lng},{lat:B.lat,lng:B.lng});
-        if(d>rkm) ok=false;
-      }
-
-      // Travaux: vérifier si AU MOINS UN match parmi tous les travaux
-      if(ok && tVals.size){
-        const rowCats = [...splitMulti(row["Travaux réalisables"]), ...splitMulti(row["Travaux réalisables 2"])].map(keyify);
-        ok = rowCats.some(k => tVals.has(k));
-      }
-
-      if(ok && lKey){
-        const rowLabels = splitMulti(row["LABELS et RESEAUX"]).map(keyify);
-        ok = rowLabels.includes(lKey);
-      }
-
-      if(ok && cKey){
-        const rowC = normalize(String(row["Signature charte de confiance"]||''));
-        const canon = rowC.startsWith('o') ? 'oui' : (rowC.startsWith('n') ? (rowC.includes('renseigne')?'non renseigne':'non') : rowC);
-        ok = (canon === cKey);
-      }
-
-      if(ok) cluster.addLayer(m);
+      if(markerMatchesFilters(m)) cluster.addLayer(m);
     });
   }
 
@@ -593,43 +587,23 @@ tSel.selectedIndex = 0;
     return parts.join(" — ") || '—';
   }
   function collectVisibleMarkers(){
+    // On part de la liste complète des marqueurs (variable globale "markers")
+    // et on réapplique exactement les mêmes critères que la carte
+    // (markerMatchesFilters), plutôt que de parcourir les clusters Leaflet.
+    // Cela évite de perdre des entreprises lorsque plusieurs d'entre elles
+    // partagent les mêmes coordonnées (ex: adresse de préfecture utilisée
+    // pour des entreprises multidépartementales) et se retrouvent
+    // regroupées dans un même cluster visuel.
     const rows = [];
-    function isMarker(obj){ return obj && typeof obj.getLatLng === 'function'; }
-    function push(m){
+    if (typeof markers === 'undefined' || !Array.isArray(markers)) return rows;
+    markers.forEach(function(m){
       try{
-        if (!isMarker(m)) return;
+        if (typeof window.markerMatchesFilters === 'function' && !window.markerMatchesFilters(m)) return;
+        const row = m.__row;
         const latlng = m.getLatLng();
-        let row = null;
-        if (m.__row) row = m.__row;
-        else if (m.feature && m.feature.properties) row = m.feature.properties;
         if (row) rows.push({row, latlng});
       }catch(e){}
-    }
-    if (window.cluster){
-      if (typeof cluster.eachLayer === 'function'){
-        cluster.eachLayer(function(layer){
-          if (typeof layer.getAllChildMarkers === 'function'){
-            layer.getAllChildMarkers().forEach(push);
-          } else {
-            push(layer);
-          }
-        });
-        return rows;
-      }
-      if (typeof cluster.getLayers === 'function'){
-        cluster.getLayers().forEach(function(l){
-          if (typeof l.getAllChildMarkers === 'function'){
-            l.getAllChildMarkers().forEach(push);
-          } else {
-            push(l);
-          }
-        });
-        return rows;
-      }
-    }
-    if (window.map && typeof map.eachLayer === 'function'){
-      map.eachLayer(push);
-    }
+    });
     return rows;
   }
   function parseRefFromURL(){
