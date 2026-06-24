@@ -797,7 +797,9 @@ tSel.selectedIndex = 0;
 
       // (PDF) Afficher les informations importantes AVANT la liste des entreprises
       bodyHtml += '<div class="card" style="border-style:dashed;">  <div class="name">Informations importantes</div>  <div class="line" style="font-size:12px;line-height:1.25;">Le compte rendu de l\'ergothérapeute doit être transmis à l\'entreprise pour que le devis puisse être conforme aux préconisations réalisées.<br>Cette liste est non exhaustive, vous pouvez trouver une liste complémentaire sur https://www.handibat.info/carte/<br>Ce document vous est communiqué à titre indicatif afin de vous aider dans vos démarches. En votre qualité de Maître d’Ouvrage, le choix de l’entreprise qui interviendra à votre domicile relève de votre responsabilité.<br>Afin de permettre une comparaison pertinente, il est recommandé de solliciter environ deux entreprises et d’obtenir au minimum deux devis.<br>Contacter davantage d’entreprises n’est généralement pas nécessaire et peut compliquer inutilement le suivi de votre projet.<br>Une fois votre choix fait, le devis retenu devra être transmis à l’adresse <b>pole.technique@merci-julie.fr</b> pour étude de votre dossier.  </div></div>';
-bodyHtml += '<table class="entreprises-table"><tbody>';
+bodyHtml += '<table class="entreprises-table"><thead><tr>'
+         +  '<th>Entreprise</th><th>Adresse</th><th>Contact</th><th>Travaux réalisables</th>'
+         +  '</tr></thead><tbody>';
 for (var i=0;i<top5.length;i++){
         var entry = top5[i];
         var r = entry.row;
@@ -806,15 +808,15 @@ for (var i=0;i<top5.length;i++){
         var ctc = contactLine(r);
         var travaux = (( (r["Travaux réalisables"]||r["travaux réalisables"]||'')  + ((r["Travaux réalisables 2"]||r["travaux réalisables 2"]) ? (' ; ' + r["Travaux réalisables 2"]||r["travaux réalisables 2"]) : '')) || '—');
         var deptNote = entry.outOfRadius
-          ? '<div class="line" style="color:#92400e;"><em>⚠ Multidépartementale, hors du rayon de recherche choisi.</em></div>'
+          ? '<span class="badge badge-warn">⚠ Hors du rayon choisi</span>'
           : (entry.departmental
-              ? '<div class="line" style="color:#6b7280;"><em>Multidépartementale (classée selon sa recommandation).</em></div>'
+              ? '<span class="badge badge-info">Multidépartementale</span>'
               : '');
         bodyHtml += '<tr class="entreprise-row' + (i % 2 ? ' alt' : '') + '">'
                  +  '<td class="name-cell"><div class="name">'+nom+'</div>'+deptNote+'</td>'
                  +  '<td>'+adr+'</td>'
                  +  '<td>'+ctc+'</td>'
-                 +  '<td><em>Travaux :</em> '+travaux+'</td>'
+                 +  '<td>'+travaux+'</td>'
                  + '</tr>';
       }
       bodyHtml += '</tbody></table>';
@@ -831,11 +833,16 @@ for (var i=0;i<top5.length;i++){
 '.card{border:1px solid #e5e7eb;border-radius:12px;padding:14px;margin:10px 0;}' +
 '.name{font-size:15px;font-weight:700;margin-bottom:6px;}' +
 '.line{margin:2px 0;font-size:13px;}' +
-'.entreprises-table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13px;}' +
-'.entreprises-table td{border:none;padding:10px 8px;vertical-align:top;}' +
-'.entreprises-table tr.alt{background:#f9fafb;}' +
-'.entreprises-table .name-cell{min-width:140px;}' +
-'.entreprises-table .name{font-size:14px;font-weight:700;margin-bottom:2px;}' +
+'.entreprises-table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px;}' +
+'.entreprises-table thead th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;font-weight:700;padding:0 8px 8px;border-bottom:2px solid #0f766e;}' +
+'.entreprises-table td{border:none;border-bottom:1px solid #f1f5f9;padding:12px 8px;vertical-align:top;line-height:1.45;}' +
+'.entreprises-table tr:last-child td{border-bottom:none;}' +
+'.entreprises-table tr.alt{background:#f8fafc;}' +
+'.entreprises-table .name-cell{min-width:150px;}' +
+'.entreprises-table .name{font-size:14px;font-weight:700;color:#0f766e;margin-bottom:2px;}' +
+'.badge{display:inline-block;margin-top:4px;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:999px;}' +
+'.badge-info{background:#e0f2f1;color:#0f766e;}' +
+'.badge-warn{background:#fff7ed;color:#92400e;}' +
 '.print-footer{position:fixed;left:0;right:0;bottom:0mm;text-align:center;font-size:10px;color:#6b7280;}' +
 '</style>' +
 '</head><body>' +
