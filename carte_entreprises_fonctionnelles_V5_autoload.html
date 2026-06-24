@@ -737,8 +737,19 @@ tSel.selectedIndex = 0;
         .filter(function(it){ return isDepartmentalName(normalize(field(it.row, ["Nom de l'entreprise","nom"]))); })
         .map(function(it){ return {row: it.row, dist: it.dist, departmental: true, outOfRadius: false}; });
 
-      let top5 = localItems.slice(0,5);
-      const deptSlots = 5 - top5.length;
+      // Tri des entreprises multidépartementales DANS le rayon par recommandation.
+      deptInRadius.sort(function(a,b){
+        const r = recoRank(a.row) - recoRank(b.row);
+        return r !== 0 ? r : a.dist - b.dist;
+      });
+
+      // Toutes les entreprises trouvées DANS le rayon sont conservées en priorité,
+      // quel que soit leur nombre : locales triées par distance, puis
+      // multidépartementales triées par recommandation. Le repli hors-rayon
+      // ci-dessous ne sert qu'à combler les places encore vides, jamais à
+      // remplacer une entreprise déjà présente dans le rayon.
+      let top5 = localItems.concat(deptInRadius);
+      const deptSlots = Math.max(0, 5 - top5.length);
       const deptNamesInRadius = new Set(deptInRadius.map(function(it){ return normalize(field(it.row, ["Nom de l'entreprise","nom"])); }));
 
       // Complète avec des entreprises multidépartementales en repli (hors rayon),
@@ -770,14 +781,13 @@ tSel.selectedIndex = 0;
         });
       }
 
-      // Toutes les entreprises multidépartementales (dans le rayon ou en repli)
-      // sont classées ensemble par recommandation, puis par distance en cas d'égalité.
-      const allDept = deptInRadius.concat(deptOutsideRadius);
-      allDept.sort(function(a,b){
+      // Le repli hors-rayon est classé par recommandation puis distance,
+      // et ne comble que les places encore vides après le rayon de recherche.
+      deptOutsideRadius.sort(function(a,b){
         const r = recoRank(a.row) - recoRank(b.row);
         return r !== 0 ? r : a.dist - b.dist;
       });
-      top5 = top5.concat(allDept.slice(0, deptSlots));
+      top5 = top5.concat(deptOutsideRadius.slice(0, deptSlots)).slice(0, 5);
 
       if (!top5.length){ alert("Aucune entreprise visible à exporter (vérifiez vos filtres)."); return; }
       const refText = (document.getElementById('refAddress') && document.getElementById('refAddress').value) || (ref.label || 'Point de référence');
