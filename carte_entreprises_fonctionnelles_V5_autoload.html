@@ -241,11 +241,14 @@ tSel.selectedIndex = 0;
   // (rayon, travaux, labels, charte). Centralisé ici pour être réutilisé
   // à la fois par l'affichage de la carte (applyFilters) et par l'export
   // Top 5, qui ne doit pas dépendre du regroupement visuel des clusters.
-  function markerMatchesFilters(m){
+  // Filtres "Travaux / Labels / Charte" appliqués à une ligne de données brute
+  // (sans tenir compte du rayon). Réutilisé pour la carte (via markerMatchesFilters)
+  // et pour le repli "entreprises départementales" de l'export Top 5, qui doit
+  // respecter les mêmes filtres mais ignorer volontairement le rayon.
+  function rowMatchesFacetFilters(row){
     const tSel=document.getElementById('travauxFilter');
     const lSel=document.getElementById('labelsFilter');
     const cSel=document.getElementById('charteFilter');
-    const rkm=Number(document.getElementById('radiusRange').value);
 
     const tVals = (window.__travauxSet && window.__travauxSet.size)
       ? new Set([...window.__travauxSet])
@@ -253,16 +256,8 @@ tSel.selectedIndex = 0;
     const lKey = lSel.value;
     const cKey = cSel.value;
 
-    const row = m.__row;
     let ok = true;
 
-    if(refMarker&&rkm>=0){
-      const A=refMarker.getLatLng();const B=m.getLatLng();
-      const d=haversineKm({lat:A.lat,lng:A.lng},{lat:B.lat,lng:B.lng});
-      if(d>rkm) ok=false;
-    }
-
-    // Travaux: vérifier si AU MOINS UN match parmi tous les travaux
     if(ok && tVals.size){
       const rowCats = [...splitMulti(row["Travaux réalisables"]), ...splitMulti(row["Travaux réalisables 2"])].map(keyify);
       ok = rowCats.some(k => tVals.has(k));
@@ -278,6 +273,23 @@ tSel.selectedIndex = 0;
       const canon = rowC.startsWith('o') ? 'oui' : (rowC.startsWith('n') ? (rowC.includes('renseigne')?'non renseigne':'non') : rowC);
       ok = (canon === cKey);
     }
+
+    return ok;
+  }
+  window.rowMatchesFacetFilters = rowMatchesFacetFilters;
+
+  function markerMatchesFilters(m){
+    const rkm=Number(document.getElementById('radiusRange').value);
+    const row = m.__row;
+    let ok = true;
+
+    if(refMarker&&rkm>=0){
+      const A=refMarker.getLatLng();const B=m.getLatLng();
+      const d=haversineKm({lat:A.lat,lng:A.lng},{lat:B.lat,lng:B.lng});
+      if(d>rkm) ok=false;
+    }
+
+    if(ok) ok = rowMatchesFacetFilters(row);
 
     return ok;
   }
@@ -679,10 +691,61 @@ tSel.selectedIndex = 0;
         }
       }catch(e){}
       const items = collectVisibleMarkers();
-      if (!items.length){ alert("Aucune entreprise visible à exporter (vérifiez vos filtres)."); return; }
       items.forEach(function(it){ it.dist = haversineKm({lat:ref.lat,lng:ref.lng}, {lat: it.latlng.lat, lng: it.latlng.lng}); });
       items.sort(function(a,b){ return a.dist - b.dist; });
-      const top5 = items.slice(0,5).map(function(it){ return it.row; });
+
+      // Ordre de préférence des recommandations (la meilleure en premier).
+      // Toute valeur absente de cette liste (NON, NE PAS SOLLICITER, vide…) passe en dernier.
+      const RECO_ORDER = ['tres bien','bien','a tester','a limiter','a eviter'];
+      function recoRank(row){
+        const v = normalize(String(row["RECOMMANDATION"]||'').trim());
+        const i = RECO_ORDER.indexOf(v);
+        return i === -1 ? RECO_ORDER.length : i;
+      }
+
+      let top5 = items.slice(0,5).map(function(it){ return {row: it.row, dist: it.dist, departmental: false}; });
+
+      // Si le rayon de recherche ne fournit pas assez de résultats, on complète
+      // avec des entreprises "multidépartementales" (même nom présent sur plusieurs
+      // lignes du jeu de données, ex: une ligne par département/préfecture couverte),
+      // même si elles sont hors du rayon choisi. Elles restent filtrées par
+      // Travaux/Labels/Charte, et sont classées par niveau de recommandation
+      // plutôt que par distance.
+      if (top5.length < 5 && typeof RAW !== 'undefined' && Array.isArray(RAW) && RAW.length){
+        const alreadyIncluded = new Set(top5.map(function(it){ return normalize(field(it.row, ["Nom de l'entreprise","nom"])); }));
+        const byName = new Map();
+        RAW.forEach(function(row){
+          const name = field(row, ["Nom de l'entreprise","nom"]);
+          if (!name) return;
+          const key = normalize(name);
+          if (alreadyIncluded.has(key)) return;
+          if (!byName.has(key)) byName.set(key, []);
+          byName.get(key).push(row);
+        });
+        const candidates = [];
+        byName.forEach(function(rows, key){
+          if (rows.length < 2) return; // pas multidépartementale
+          if (!rowMatchesFacetFilters(rows[0])) return;
+          // On choisit la ligne la plus proche du point de référence pour l'affichage
+          // (adresse/contact les plus pertinents pour l'utilisateur).
+          let best = null, bestDist = Infinity;
+          rows.forEach(function(row){
+            const lat = Number(row["Latitude"]), lng = Number(row["Longitude"]);
+            const d = isFinite(lat) && isFinite(lng)
+              ? haversineKm({lat:ref.lat,lng:ref.lng}, {lat, lng})
+              : Infinity;
+            if (d < bestDist){ bestDist = d; best = row; }
+          });
+          if (best) candidates.push({row: best, dist: bestDist, departmental: true});
+        });
+        candidates.sort(function(a,b){
+          const r = recoRank(a.row) - recoRank(b.row);
+          return r !== 0 ? r : a.dist - b.dist;
+        });
+        top5 = top5.concat(candidates.slice(0, 5 - top5.length));
+      }
+
+      if (!top5.length){ alert("Aucune entreprise visible à exporter (vérifiez vos filtres)."); return; }
       const refText = (document.getElementById('refAddress') && document.getElementById('refAddress').value) || (ref.label || 'Point de référence');
       const now = new Date();
       const fmt = now.toLocaleDateString('fr-FR', {year:'numeric', month:'2-digit', day:'2-digit'});
@@ -691,15 +754,21 @@ tSel.selectedIndex = 0;
       // (PDF) Afficher les informations importantes AVANT la liste des entreprises
       bodyHtml += '<div class="card" style="border-style:dashed;">  <div class="name">Informations importantes</div>  <div class="line" style="font-size:12px;line-height:1.25;">Le compte rendu de l\'ergothérapeute doit être transmis à l\'entreprise pour que le devis puisse être conforme aux préconisations réalisées.<br>Cette liste est non exhaustive, vous pouvez trouver une liste complémentaire sur https://www.handibat.info/carte/<br>Ce document vous est communiqué à titre indicatif afin de vous aider dans vos démarches. En votre qualité de Maître d’Ouvrage, le choix de l’entreprise qui interviendra à votre domicile relève de votre responsabilité.<br>Afin de permettre une comparaison pertinente, il est recommandé de solliciter environ deux entreprises et d’obtenir au minimum deux devis.<br>Contacter davantage d’entreprises n’est généralement pas nécessaire et peut compliquer inutilement le suivi de votre projet.<br>Une fois votre choix fait, le devis retenu devra être transmis à l’adresse <b>pole.technique@merci-julie.fr</b> pour étude de votre dossier.  </div></div>';
 for (var i=0;i<top5.length;i++){
-        var r = top5[i];
+        var entry = top5[i];
+        var r = entry.row;
         var nom = field(r, ["Nom de l'entreprise","nom"]) || '—';
         var adr = formatAddress(r);
         var ctc = contactLine(r);
+        var deptNote = entry.departmental
+          ? '<div class="line" style="color:#92400e;"><em>⚠ Entreprise multidépartementale, hors du rayon de recherche choisi — proposée car peu d’entreprises correspondent dans ce rayon.</em></div>'
+          : '';
         bodyHtml += '<section class="card">'
                  +  '<div class="name">'+(i+1)+'. '+nom+'</div>'
                  +  '<div class="line">'+adr+'</div>'
                  +  '<div class="line">'+ctc+'</div>'
-                 +   ' <div class="line"><em>Travaux :</em> ' + (( (r["Travaux réalisables"]||r["travaux réalisables"]||'')  + ((r["Travaux réalisables 2"]||r["travaux réalisables 2"]) ? (' ; ' + r["Travaux réalisables 2"]||r["travaux réalisables 2"]) : '')) || '—') + '</div>' + '</section>';
+                 +   ' <div class="line"><em>Travaux :</em> ' + (( (r["Travaux réalisables"]||r["travaux réalisables"]||'')  + ((r["Travaux réalisables 2"]||r["travaux réalisables 2"]) ? (' ; ' + r["Travaux réalisables 2"]||r["travaux réalisables 2"]) : '')) || '—') + '</div>'
+                 +  deptNote
+                 + '</section>';
       }
 
       bodyHtml += '<div style="page-break-after:always; break-after:page;"></div><div class="card"><div class="name" style="margin-top:10px;">Contenu d’un devis</div>  <div class="line">    Pour l’étude de votre dossier dans nos services, un devis vous sera demandé. Il devra se référer au plus près des préconisations d’ergothérapie    et du compte rendu technique pour être accepté par les organismes financeurs.    Pour que le devis soit validé, il doit comporter les renseignements suivants :  </div>  <ul style="margin:8px 0 0 18px; padding:0;">    <li>Nom et adresse de l’entreprise</li>    <li>Date de rédaction</li>    <li>Numéro d’enregistrement à la chambre du commerce ou au registre des métiers</li>    <li>Nom du client et lieu d’exécution des travaux</li>    <li>Détail des fournitures (préconisées par l’ergothérapeute) poste par poste</li>    <li>Détail de chaque fourniture : quantités, hauteurs (siège, barres…), références produits, prix</li>    <li>Coûts de main d’œuvre et des fournitures séparés</li>    <li>Montant HT et TTC, ainsi que le taux de TVA appliqué</li>    <li>Durée de validité du devis</li>    <li>Signature et tampon de l’entreprise</li>  </ul>  <div class="line" style="margin-top:8px;">    Il faudra également que l\'entreprise vous fournisse son attestation d\'assurance décennale et son Kbis.  </div></div>';
