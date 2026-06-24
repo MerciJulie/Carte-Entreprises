@@ -75,7 +75,22 @@
 
   <div id="map"></div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">// Exclusivité pour l'option (Tous) dans Travaux
+(function(){
+  const travauxSel = document.getElementById('travauxFilter');
+  if (!travauxSel) return;
+  travauxSel.addEventListener('change', () => {
+    const hasAll = Array.from(travauxSel.selectedOptions).some(o => o.value === '');
+    if (hasAll && travauxSel.selectedOptions.length > 1) {
+      Array.from(travauxSel.options).forEach(o => (o.selected = (o.value === '')));
+    } else if (!hasAll) {
+      const allOpt = Array.from(travauxSel.options).find(o => o.value === '');
+      if (allOpt) allOpt.selected = false;
+    }
+    if (typeof applyFilters === 'function') applyFilters();
+  });
+})();
+</script>
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 
   <script>
@@ -235,25 +250,13 @@ tSel.selectedIndex = 0;
       markers.push(m);
       cluster.addLayer(m);
     });
-    // Publiés sur window pour que d'autres <script> (ex: export Top 5) puissent
-    // s'appuyer sur une référence fiable, sans dépendre de la portée lexicale
-    // de "markers"/"RAW" entre balises <script>.
-    window.markers = markers;
-    window.RAW = RAW;
   }
 
-  // Renvoie true si le marqueur m respecte les filtres actuellement actifs
-  // (rayon, travaux, labels, charte). Centralisé ici pour être réutilisé
-  // à la fois par l'affichage de la carte (applyFilters) et par l'export
-  // Top 5, qui ne doit pas dépendre du regroupement visuel des clusters.
-  // Filtres "Travaux / Labels / Charte" appliqués à une ligne de données brute
-  // (sans tenir compte du rayon). Réutilisé pour la carte (via markerMatchesFilters)
-  // et pour le repli "entreprises départementales" de l'export Top 5, qui doit
-  // respecter les mêmes filtres mais ignorer volontairement le rayon.
-  function rowMatchesFacetFilters(row){
+  function applyFilters(){
     const tSel=document.getElementById('travauxFilter');
     const lSel=document.getElementById('labelsFilter');
     const cSel=document.getElementById('charteFilter');
+    const rkm=Number(document.getElementById('radiusRange').value);
 
     const tVals = (window.__travauxSet && window.__travauxSet.size)
       ? new Set([...window.__travauxSet])
@@ -261,51 +264,37 @@ tSel.selectedIndex = 0;
     const lKey = lSel.value;
     const cKey = cSel.value;
 
-    let ok = true;
-
-    if(ok && tVals.size){
-      const rowCats = [...splitMulti(row["Travaux réalisables"]), ...splitMulti(row["Travaux réalisables 2"])].map(keyify);
-      ok = rowCats.some(k => tVals.has(k));
-    }
-
-    if(ok && lKey){
-      const rowLabels = splitMulti(row["LABELS et RESEAUX"]).map(keyify);
-      ok = rowLabels.includes(lKey);
-    }
-
-    if(ok && cKey){
-      const rowC = normalize(String(row["Signature charte de confiance"]||''));
-      const canon = rowC.startsWith('o') ? 'oui' : (rowC.startsWith('n') ? (rowC.includes('renseigne')?'non renseigne':'non') : rowC);
-      ok = (canon === cKey);
-    }
-
-    return ok;
-  }
-  window.rowMatchesFacetFilters = rowMatchesFacetFilters;
-
-  function markerMatchesFilters(m){
-    const rkm=Number(document.getElementById('radiusRange').value);
-    const row = m.__row;
-    let ok = true;
-
-    if(refMarker&&rkm>=0){
-      const A=refMarker.getLatLng();const B=m.getLatLng();
-      const d=haversineKm({lat:A.lat,lng:A.lng},{lat:B.lat,lng:B.lng});
-      if(d>rkm) ok=false;
-    }
-
-    if(ok) ok = rowMatchesFacetFilters(row);
-
-    return ok;
-  }
-  window.markerMatchesFilters = markerMatchesFilters;
-
-  function applyFilters(){
-    const rkm=Number(document.getElementById('radiusRange').value);
     if(refCircle&&refMarker)refCircle.setRadius(rkm*1000);
     cluster.clearLayers();
+
     markers.forEach(m=>{
-      if(markerMatchesFilters(m)) cluster.addLayer(m);
+      const row = m.__row;
+      let ok = true;
+
+      if(refMarker&&rkm>=0){
+        const A=refMarker.getLatLng();const B=m.getLatLng();
+        const d=haversineKm({lat:A.lat,lng:A.lng},{lat:B.lat,lng:B.lng});
+        if(d>rkm) ok=false;
+      }
+
+      // Travaux: vérifier si AU MOINS UN match parmi tous les travaux
+      if(ok && tVals.size){
+        const rowCats = [...splitMulti(row["Travaux réalisables"]), ...splitMulti(row["Travaux réalisables 2"])].map(keyify);
+        ok = rowCats.some(k => tVals.has(k));
+      }
+
+      if(ok && lKey){
+        const rowLabels = splitMulti(row["LABELS et RESEAUX"]).map(keyify);
+        ok = rowLabels.includes(lKey);
+      }
+
+      if(ok && cKey){
+        const rowC = normalize(String(row["Signature charte de confiance"]||''));
+        const canon = rowC.startsWith('o') ? 'oui' : (rowC.startsWith('n') ? (rowC.includes('renseigne')?'non renseigne':'non') : rowC);
+        ok = (canon === cKey);
+      }
+
+      if(ok) cluster.addLayer(m);
     });
   }
 
@@ -314,7 +303,6 @@ tSel.selectedIndex = 0;
     reader.onload=e=>{
       try{
         RAW=JSON.parse(e.target.result);
-        window.RAW = RAW;
         computeFacets(RAW);
         rebuildFilters();
         addMarkers(RAW);
@@ -605,24 +593,43 @@ tSel.selectedIndex = 0;
     return parts.join(" — ") || '—';
   }
   function collectVisibleMarkers(){
-    // On part de la liste complète des marqueurs (variable globale "markers")
-    // et on réapplique exactement les mêmes critères que la carte
-    // (markerMatchesFilters), plutôt que de parcourir les clusters Leaflet.
-    // Cela évite de perdre des entreprises lorsque plusieurs d'entre elles
-    // partagent les mêmes coordonnées (ex: adresse de préfecture utilisée
-    // pour des entreprises multidépartementales) et se retrouvent
-    // regroupées dans un même cluster visuel.
     const rows = [];
-    const allMarkers = window.markers;
-    if (!Array.isArray(allMarkers)) return rows;
-    allMarkers.forEach(function(m){
+    function isMarker(obj){ return obj && typeof obj.getLatLng === 'function'; }
+    function push(m){
       try{
-        if (typeof window.markerMatchesFilters === 'function' && !window.markerMatchesFilters(m)) return;
-        const row = m.__row;
+        if (!isMarker(m)) return;
         const latlng = m.getLatLng();
+        let row = null;
+        if (m.__row) row = m.__row;
+        else if (m.feature && m.feature.properties) row = m.feature.properties;
         if (row) rows.push({row, latlng});
       }catch(e){}
-    });
+    }
+    if (window.cluster){
+      if (typeof cluster.eachLayer === 'function'){
+        cluster.eachLayer(function(layer){
+          if (typeof layer.getAllChildMarkers === 'function'){
+            layer.getAllChildMarkers().forEach(push);
+          } else {
+            push(layer);
+          }
+        });
+        return rows;
+      }
+      if (typeof cluster.getLayers === 'function'){
+        cluster.getLayers().forEach(function(l){
+          if (typeof l.getAllChildMarkers === 'function'){
+            l.getAllChildMarkers().forEach(push);
+          } else {
+            push(l);
+          }
+        });
+        return rows;
+      }
+    }
+    if (window.map && typeof map.eachLayer === 'function'){
+      map.eachLayer(push);
+    }
     return rows;
   }
   function parseRefFromURL(){
@@ -698,98 +705,10 @@ tSel.selectedIndex = 0;
         }
       }catch(e){}
       const items = collectVisibleMarkers();
+      if (!items.length){ alert("Aucune entreprise visible à exporter (vérifiez vos filtres)."); return; }
       items.forEach(function(it){ it.dist = haversineKm({lat:ref.lat,lng:ref.lng}, {lat: it.latlng.lat, lng: it.latlng.lng}); });
-
-      // Ordre de préférence des recommandations (la meilleure en premier).
-      // Toute valeur absente de cette liste (NON, NE PAS SOLLICITER, vide…) passe en dernier.
-      const RECO_ORDER = ['tres bien','bien','a tester','a limiter','a eviter'];
-      function recoRank(row){
-        const v = normalize(String(row["RECOMMANDATION"]||'').trim());
-        const i = RECO_ORDER.indexOf(v);
-        return i === -1 ? RECO_ORDER.length : i;
-      }
-
-      // Une entreprise est "multidépartementale" si son nom apparaît sur plusieurs
-      // lignes du jeu de données complet (ex: une ligne par département/préfecture
-      // couverte). Calculé une fois sur RAW pour classer ces entreprises par
-      // recommandation plutôt que par distance, qu'elles soient dans le rayon
-      // de recherche ou ajoutées en repli.
-      const allRows = Array.isArray(window.RAW) ? window.RAW : [];
-      const nameCounts = new Map();
-      allRows.forEach(function(row){
-        const name = field(row, ["Nom de l'entreprise","nom"]);
-        if (!name) return;
-        const key = normalize(name);
-        nameCounts.set(key, (nameCounts.get(key)||0) + 1);
-      });
-      function isDepartmentalName(key){ return (nameCounts.get(key)||0) > 1; }
-
-      // Entreprises locales (mono-adresse) trouvées dans le rayon : toujours
-      // prioritaires, triées par distance.
-      const localItems = items
-        .filter(function(it){ return !isDepartmentalName(normalize(field(it.row, ["Nom de l'entreprise","nom"]))); })
-        .sort(function(a,b){ return a.dist - b.dist; })
-        .map(function(it){ return {row: it.row, dist: it.dist, departmental: false, outOfRadius: false}; });
-
-      // Entreprises multidépartementales trouvées dans le rayon : on les retire
-      // du tri par distance, elles seront reclassées par recommandation plus bas.
-      const deptInRadius = items
-        .filter(function(it){ return isDepartmentalName(normalize(field(it.row, ["Nom de l'entreprise","nom"]))); })
-        .map(function(it){ return {row: it.row, dist: it.dist, departmental: true, outOfRadius: false}; });
-
-      // Tri des entreprises multidépartementales DANS le rayon par recommandation.
-      deptInRadius.sort(function(a,b){
-        const r = recoRank(a.row) - recoRank(b.row);
-        return r !== 0 ? r : a.dist - b.dist;
-      });
-
-      // Toutes les entreprises trouvées DANS le rayon sont conservées en priorité,
-      // quel que soit leur nombre : locales triées par distance, puis
-      // multidépartementales triées par recommandation. Le repli hors-rayon
-      // ci-dessous ne sert qu'à combler les places encore vides, jamais à
-      // remplacer une entreprise déjà présente dans le rayon.
-      let top5 = localItems.concat(deptInRadius);
-      const deptSlots = Math.max(0, 5 - top5.length);
-      const deptNamesInRadius = new Set(deptInRadius.map(function(it){ return normalize(field(it.row, ["Nom de l'entreprise","nom"])); }));
-
-      // Complète avec des entreprises multidépartementales en repli (hors rayon),
-      // pour ne pas se limiter à celles déjà détectées dans le rayon.
-      const deptOutsideRadius = [];
-      if (deptSlots > 0 && allRows.length){
-        const byName = new Map();
-        allRows.forEach(function(row){
-          const name = field(row, ["Nom de l'entreprise","nom"]);
-          if (!name) return;
-          const key = normalize(name);
-          if (!isDepartmentalName(key) || deptNamesInRadius.has(key)) return;
-          if (!byName.has(key)) byName.set(key, []);
-          byName.get(key).push(row);
-        });
-        byName.forEach(function(rows, key){
-          if (!rowMatchesFacetFilters(rows[0])) return;
-          // On choisit la ligne la plus proche du point de référence pour l'affichage
-          // (adresse/contact les plus pertinents pour l'utilisateur).
-          let best = null, bestDist = Infinity;
-          rows.forEach(function(row){
-            const lat = Number(row["Latitude"]), lng = Number(row["Longitude"]);
-            const d = isFinite(lat) && isFinite(lng)
-              ? haversineKm({lat:ref.lat,lng:ref.lng}, {lat, lng})
-              : Infinity;
-            if (d < bestDist){ bestDist = d; best = row; }
-          });
-          if (best) deptOutsideRadius.push({row: best, dist: bestDist, departmental: true, outOfRadius: true});
-        });
-      }
-
-      // Le repli hors-rayon est classé par recommandation puis distance,
-      // et ne comble que les places encore vides après le rayon de recherche.
-      deptOutsideRadius.sort(function(a,b){
-        const r = recoRank(a.row) - recoRank(b.row);
-        return r !== 0 ? r : a.dist - b.dist;
-      });
-      top5 = top5.concat(deptOutsideRadius.slice(0, deptSlots)).slice(0, 5);
-
-      if (!top5.length){ alert("Aucune entreprise visible à exporter (vérifiez vos filtres)."); return; }
+      items.sort(function(a,b){ return a.dist - b.dist; });
+      const top5 = items.slice(0,5).map(function(it){ return it.row; });
       const refText = (document.getElementById('refAddress') && document.getElementById('refAddress').value) || (ref.label || 'Point de référence');
       const now = new Date();
       const fmt = now.toLocaleDateString('fr-FR', {year:'numeric', month:'2-digit', day:'2-digit'});
@@ -798,23 +717,15 @@ tSel.selectedIndex = 0;
       // (PDF) Afficher les informations importantes AVANT la liste des entreprises
       bodyHtml += '<div class="card" style="border-style:dashed;">  <div class="name">Informations importantes</div>  <div class="line" style="font-size:12px;line-height:1.25;">Le compte rendu de l\'ergothérapeute doit être transmis à l\'entreprise pour que le devis puisse être conforme aux préconisations réalisées.<br>Cette liste est non exhaustive, vous pouvez trouver une liste complémentaire sur https://www.handibat.info/carte/<br>Ce document vous est communiqué à titre indicatif afin de vous aider dans vos démarches. En votre qualité de Maître d’Ouvrage, le choix de l’entreprise qui interviendra à votre domicile relève de votre responsabilité.<br>Afin de permettre une comparaison pertinente, il est recommandé de solliciter environ deux entreprises et d’obtenir au minimum deux devis.<br>Contacter davantage d’entreprises n’est généralement pas nécessaire et peut compliquer inutilement le suivi de votre projet.<br>Une fois votre choix fait, le devis retenu devra être transmis à l’adresse <b>pole.technique@merci-julie.fr</b> pour étude de votre dossier.  </div></div>';
 for (var i=0;i<top5.length;i++){
-        var entry = top5[i];
-        var r = entry.row;
+        var r = top5[i];
         var nom = field(r, ["Nom de l'entreprise","nom"]) || '—';
         var adr = formatAddress(r);
         var ctc = contactLine(r);
-        var deptNote = entry.outOfRadius
-          ? '<div class="line" style="color:#92400e;"><em>⚠ Entreprise multidépartementale, hors du rayon de recherche choisi — proposée car peu d’entreprises correspondent dans ce rayon.</em></div>'
-          : (entry.departmental
-              ? '<div class="line" style="color:#6b7280;"><em>Entreprise multidépartementale (classée selon son niveau de recommandation).</em></div>'
-              : '');
         bodyHtml += '<section class="card">'
                  +  '<div class="name">'+(i+1)+'. '+nom+'</div>'
                  +  '<div class="line">'+adr+'</div>'
                  +  '<div class="line">'+ctc+'</div>'
-                 +   ' <div class="line"><em>Travaux :</em> ' + (( (r["Travaux réalisables"]||r["travaux réalisables"]||'')  + ((r["Travaux réalisables 2"]||r["travaux réalisables 2"]) ? (' ; ' + r["Travaux réalisables 2"]||r["travaux réalisables 2"]) : '')) || '—') + '</div>'
-                 +  deptNote
-                 + '</section>';
+                 +   ' <div class="line"><em>Travaux :</em> ' + (( (r["Travaux réalisables"]||r["travaux réalisables"]||'')  + ((r["Travaux réalisables 2"]||r["travaux réalisables 2"]) ? (' ; ' + r["Travaux réalisables 2"]||r["travaux réalisables 2"]) : '')) || '—') + '</div>' + '</section>';
       }
 
       bodyHtml += '<div style="page-break-after:always; break-after:page;"></div><div class="card"><div class="name" style="margin-top:10px;">Contenu d’un devis</div>  <div class="line">    Pour l’étude de votre dossier dans nos services, un devis vous sera demandé. Il devra se référer au plus près des préconisations d’ergothérapie    et du compte rendu technique pour être accepté par les organismes financeurs.    Pour que le devis soit validé, il doit comporter les renseignements suivants :  </div>  <ul style="margin:8px 0 0 18px; padding:0;">    <li>Nom et adresse de l’entreprise</li>    <li>Date de rédaction</li>    <li>Numéro d’enregistrement à la chambre du commerce ou au registre des métiers</li>    <li>Nom du client et lieu d’exécution des travaux</li>    <li>Détail des fournitures (préconisées par l’ergothérapeute) poste par poste</li>    <li>Détail de chaque fourniture : quantités, hauteurs (siège, barres…), références produits, prix</li>    <li>Coûts de main d’œuvre et des fournitures séparés</li>    <li>Montant HT et TTC, ainsi que le taux de TVA appliqué</li>    <li>Durée de validité du devis</li>    <li>Signature et tampon de l’entreprise</li>  </ul>  <div class="line" style="margin-top:8px;">    Il faudra également que l\'entreprise vous fournisse son attestation d\'assurance décennale et son Kbis.  </div></div>';
@@ -862,14 +773,9 @@ for (var i=0;i<top5.length;i++){
       if (!res.ok) return; // fail silently if the file isn't there
       const data = await res.json();
 
-      // Expect the existing global pipeline functions to be present.
-      // On affecte directement RAW (et pas seulement window.RAW) car "RAW" est
-      // une variable "let" du premier <script> : seule une affectation sans
-      // "window." met réellement à jour la donnée que computeFacets/addMarkers
-      // utilisent en interne (window.RAW = ... créerait une propriété distincte,
-      // sans effet sur la variable "RAW" lue par le reste du code).
-      RAW = data;
-      window.RAW = RAW;
+      // Expect the existing global pipeline functions to be present
+      // RAW is the same global your manual import uses
+      window.RAW = data;
 
       if (typeof computeFacets === 'function') computeFacets(RAW);
       if (typeof rebuildFilters === 'function') rebuildFilters();
