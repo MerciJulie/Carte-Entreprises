@@ -240,7 +240,9 @@ tSel.selectedIndex = 0;
     const tVals = (window.__travauxSet && window.__travauxSet.size)
       ? new Set([...window.__travauxSet])
       : new Set(Array.from(tSel.selectedOptions).map(o=>o.value).filter(Boolean));
-    const lKey = lSel.value;
+    const lVals = (window.__labelsSet && window.__labelsSet.size)
+      ? new Set([...window.__labelsSet])
+      : new Set(Array.from(lSel.selectedOptions).map(o=>o.value).filter(Boolean));
 
     let ok = true;
 
@@ -249,9 +251,9 @@ tSel.selectedIndex = 0;
       ok = rowCats.some(k => tVals.has(k));
     }
 
-    if(ok && lKey){
+    if(ok && lVals.size){
       const rowLabels = splitMulti(row["LABELS et RESEAUX"]).map(keyify);
-      ok = rowLabels.includes(lKey);
+      ok = rowLabels.some(k => lVals.has(k));
     }
 
     return ok;
@@ -398,13 +400,14 @@ tSel.selectedIndex = 0;
 
 <script>
 (function(){
-  function enhanceTravauxDropdownHighlight(){
-    var sel = document.getElementById('travauxFilter');
+  function enhanceMultiDropdown(selectId, setName){
+    var sel = document.getElementById(selectId);
     if(!sel || sel.dataset.cm2Enhanced === '1') return;
     sel.dataset.cm2Enhanced = '1';
 
-    window.__travauxSet = window.__travauxSet || new Set();
-    Array.from(sel.selectedOptions).forEach(function(o){ if(o.value) window.__travauxSet.add(o.value); });
+    window[setName] = window[setName] || new Set();
+    var theSet = window[setName];
+    Array.from(sel.selectedOptions).forEach(function(o){ if(o.value) theSet.add(o.value); });
 
     var wrap = document.createElement('div');
     wrap.className = 'cm2-wrap';
@@ -449,7 +452,7 @@ tSel.selectedIndex = 0;
         var row = document.createElement('label');
         row.className = 'cm2-row';
         var cb = document.createElement('input'); cb.type = 'checkbox'; cb.value = opt.value;
-        cb.checked = window.__travauxSet.has(opt.value);
+        cb.checked = theSet.has(opt.value);
         var txt = document.createElement('span'); txt.textContent = opt.textContent;
         row.appendChild(cb); row.appendChild(txt);
         if(cb.checked) row.classList.add('selected');
@@ -460,8 +463,8 @@ tSel.selectedIndex = 0;
     function syncSelectFromSet(){
       var options = Array.from(sel.options);
       options.forEach(function(o){
-        if(o.value === '') o.selected = (window.__travauxSet.size === 0);
-        else o.selected = window.__travauxSet.has(o.value);
+        if(o.value === '') o.selected = (theSet.size === 0);
+        else o.selected = theSet.has(o.value);
       });
     }
 
@@ -469,7 +472,7 @@ tSel.selectedIndex = 0;
       var options = Array.from(sel.options);
       var hasEmpty = options.length && options[0].value === '';
       var realOptions = hasEmpty ? options.slice(1) : options;
-      var names = realOptions.filter(function(o){ return window.__travauxSet.has(o.value); })
+      var names = realOptions.filter(function(o){ return theSet.has(o.value); })
                              .map(function(o){ return o.textContent || o.label || o.text; });
       if(names.length === 0) trigger.textContent = '(Tous)';
       else if(names.length <= 2) trigger.textContent = names.join(', ');
@@ -503,7 +506,7 @@ tSel.selectedIndex = 0;
     list.addEventListener('change', function(e){
       if(e.target && e.target.type === 'checkbox'){
         var v = e.target.value;
-        if(e.target.checked) window.__travauxSet.add(v); else window.__travauxSet.delete(v);
+        if(e.target.checked) theSet.add(v); else theSet.delete(v);
         // mettre à jour surlignement ligne
         var row = e.target.closest('.cm2-row');
         if(row) row.classList.toggle('selected', e.target.checked);
@@ -516,13 +519,13 @@ tSel.selectedIndex = 0;
       if(e.target !== cb){ cb.checked = !cb.checked; cb.dispatchEvent(new Event('change', {bubbles:true})); }
     });
     btnAll.addEventListener('click', function(){
-      window.__travauxSet.clear();
-      Array.from(sel.options).forEach(function(o){ if(o.value) window.__travauxSet.add(o.value); });
+      theSet.clear();
+      Array.from(sel.options).forEach(function(o){ if(o.value) theSet.add(o.value); });
       applyAndRefresh();
       buildListFromSelect();
     });
     btnNone.addEventListener('click', function(){
-      window.__travauxSet.clear();
+      theSet.clear();
       applyAndRefresh();
       buildListFromSelect();
     });
@@ -539,10 +542,15 @@ tSel.selectedIndex = 0;
     updateTriggerLabel();
   }
 
+  function enhanceAllDropdowns(){
+    enhanceMultiDropdown('travauxFilter', '__travauxSet');
+    enhanceMultiDropdown('labelsFilter', '__labelsSet');
+  }
+
   if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', enhanceTravauxDropdownHighlight);
+    document.addEventListener('DOMContentLoaded', enhanceAllDropdowns);
   } else {
-    enhanceTravauxDropdownHighlight();
+    enhanceAllDropdowns();
   }
 })();
 </script>
