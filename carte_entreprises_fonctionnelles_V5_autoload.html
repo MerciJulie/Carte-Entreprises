@@ -43,7 +43,7 @@
       <label for="jsonInput">Charger un fichier JSON</label>
       <input type="file" id="jsonInput" accept="application/json"/>
     </div>
-    <div class="group" style="flex:0 1 280px; max-width:280px;">
+    <div class="group" style="flex:0 1 560px; max-width:560px;">
       <label for="refAddress">Adresse de référence</label>
       <div style="display:flex; gap:6px;">
         <input id="refAddress" type="text" style="flex:1; min-width:0;" placeholder="Ex. 10 Rue de la Paix, Paris" />
@@ -62,12 +62,11 @@
       <label for="labelsFilter">Labels & réseaux</label>
       <select id="labelsFilter"></select>
     </div>
-    <div class="group">
-<div style="margin-top:6px">
-  <button id="exportTop5Btn" onclick="exportTop5()" style="padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;">
-    Exporter Top 5 (PDF)
-  </button>
-</div>
+    <div class="group" style="margin-left:auto;">
+      <label style="visibility:hidden;">Export</label>
+      <button id="exportTop5Btn" onclick="exportTop5()" style="padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;white-space:nowrap;">
+        Exporter Top 5 (PDF)
+      </button>
     </div>
   </div>
 
