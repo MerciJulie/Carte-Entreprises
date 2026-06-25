@@ -63,8 +63,6 @@
       <select id="labelsFilter"></select>
     </div>
     <div class="group">
-      <label for="charteFilter">Charte de confiance</label>
-      <select id="charteFilter"></select>
 <div style="margin-top:6px">
   <button id="exportTop5Btn" onclick="exportTop5()" style="padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;background:#fff;cursor:pointer;">
     Exporter Top 5 (PDF)
@@ -112,7 +110,7 @@
     map.flyTo([lat,lng],Math.max(map.getZoom(),11));
   }
 
-  let RAW=[],markers=[],LABELS=[],CHARTES=[];
+  let RAW=[],markers=[],LABELS=[];
   const ALLOWED_TRAVAUX = [
     "sanitaires",
     "accessibilité extérieure",
@@ -157,21 +155,14 @@
 
   function computeFacets(rows){
     const labelSet = new Map();
-    const charteSet = new Map();
     rows.forEach(r=>{
       splitMulti(r["LABELS et RESEAUX"]).forEach(v=>{
         const k = keyify(v);
         if(!k) return;
         if(!labelSet.has(k)) labelSet.set(k, v.trim());
       });
-      const cv = normalize(String(r["Signature charte de confiance"]||''));
-      if(cv){
-        const canon = cv.startsWith('o') ? 'Oui' : (cv.startsWith('n') ? (cv.includes('renseigne')?'Non renseigné':'Non') : r["Signature charte de confiance"]);
-        charteSet.set(normalize(canon), canon);
-      }
     });
     LABELS = [''].concat(Array.from(labelSet.keys()).sort((a,b)=>labelSet.get(a).localeCompare(labelSet.get(b),'fr')));
-    CHARTES = [''].concat(Array.from(charteSet.keys()).sort().map(k=>charteSet.get(k)));
   }
 
   function rebuildFilters(){
@@ -198,14 +189,6 @@ tSel.selectedIndex = 0;
     const optAllL=document.createElement('option'); optAllL.value=''; optAllL.textContent='(Tous)'; lSel.appendChild(optAllL);
     LABELS.slice(1).forEach(k=>{
       const opt=document.createElement('option'); opt.value=k; opt.textContent=k; lSel.appendChild(opt);
-    });
-
-    // Charte
-    const cSel=document.getElementById('charteFilter');
-    cSel.innerHTML='';
-    const optAllC=document.createElement('option'); optAllC.value=''; optAllC.textContent='(Tous)'; cSel.appendChild(optAllC);
-    CHARTES.slice(1).forEach(txt=>{
-      const opt=document.createElement('option'); opt.value=normalize(txt); opt.textContent=txt; cSel.appendChild(opt);
     });
 
     // Légende pour les 11 types
@@ -253,13 +236,11 @@ tSel.selectedIndex = 0;
   function rowMatchesFacetFilters(row){
     const tSel=document.getElementById('travauxFilter');
     const lSel=document.getElementById('labelsFilter');
-    const cSel=document.getElementById('charteFilter');
 
     const tVals = (window.__travauxSet && window.__travauxSet.size)
       ? new Set([...window.__travauxSet])
       : new Set(Array.from(tSel.selectedOptions).map(o=>o.value).filter(Boolean));
     const lKey = lSel.value;
-    const cKey = cSel.value;
 
     let ok = true;
 
@@ -271,12 +252,6 @@ tSel.selectedIndex = 0;
     if(ok && lKey){
       const rowLabels = splitMulti(row["LABELS et RESEAUX"]).map(keyify);
       ok = rowLabels.includes(lKey);
-    }
-
-    if(ok && cKey){
-      const rowC = normalize(String(row["Signature charte de confiance"]||''));
-      const canon = rowC.startsWith('o') ? 'oui' : (rowC.startsWith('n') ? (rowC.includes('renseigne')?'non renseigne':'non') : rowC);
-      ok = (canon === cKey);
     }
 
     return ok;
@@ -348,7 +323,6 @@ tSel.selectedIndex = 0;
   });
   document.getElementById('travauxFilter').addEventListener('change',applyFilters);
   document.getElementById('labelsFilter').addEventListener('change',applyFilters);
-  document.getElementById('charteFilter').addEventListener('change',applyFilters);
   </script>
 
 <script>
