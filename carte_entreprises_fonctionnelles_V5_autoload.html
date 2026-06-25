@@ -13,7 +13,7 @@
     :root { --bar-h: 96px; }
     html, body { height:100%; margin:0; }
     #topbar { position:fixed; inset:0 0 auto 0; height:var(--bar-h); z-index:1000;
-      display:flex; gap:12px; align-items:flex-start; padding:8px 12px; flex-wrap:wrap;
+      display:flex; gap:12px; align-items:flex-start; padding:8px 28px 8px 12px; flex-wrap:wrap;
       background:#ffffffee; backdrop-filter:blur(6px); border-bottom:1px solid #e5e7eb;
       font-family: sans-serif;
     }
@@ -58,9 +58,13 @@
       <label for="travauxFilter">Travaux réalisables</label>
       <select id="travauxFilter"></select>
     </div>
-    <div class="group" style="width:170px; flex:0 0 170px;">
-      <label for="labelsFilter">Labels & réseaux</label>
+    <div class="group" style="width:140px; flex:0 0 140px;">
+      <label for="labelsFilter">Labels</label>
       <select id="labelsFilter"></select>
+    </div>
+    <div class="group" style="width:170px; flex:0 0 170px;">
+      <label for="reseauxFilter">Réseaux</label>
+      <select id="reseauxFilter"></select>
     </div>
     <div class="group" style="margin-left:auto;">
       <label style="visibility:hidden;">Export</label>
@@ -109,7 +113,7 @@
     map.flyTo([lat,lng],Math.max(map.getZoom(),11));
   }
 
-  let RAW=[],markers=[],LABELS=[];
+  let RAW=[],markers=[],LABELS=[],RESEAUX=[];
   const ALLOWED_TRAVAUX = [
     "sanitaires",
     "accessibilité extérieure",
@@ -152,16 +156,23 @@
       +'<div class="row"><b>SIRET:</b> '+siret+'</div></div>';
   }
 
+  // Seuls Handibat et Silverbat sont des labels officiels ; tout le reste de la
+  // colonne "LABELS et RESEAUX" (Réseau Cédéo, CAPEB, RGE, etc.) est un réseau.
+  const OFFICIAL_LABELS = new Set(['handibat','silverbat']);
+
   function computeFacets(rows){
     const labelSet = new Map();
+    const reseauSet = new Map();
     rows.forEach(r=>{
       splitMulti(r["LABELS et RESEAUX"]).forEach(v=>{
         const k = keyify(v);
         if(!k) return;
-        if(!labelSet.has(k)) labelSet.set(k, v.trim());
+        const target = OFFICIAL_LABELS.has(k) ? labelSet : reseauSet;
+        if(!target.has(k)) target.set(k, v.trim());
       });
     });
-    LABELS = [''].concat(Array.from(labelSet.keys()).sort((a,b)=>labelSet.get(a).localeCompare(labelSet.get(b),'fr')));
+    LABELS = [{key:'',label:'(Tous)'}].concat(Array.from(labelSet.entries()).sort((a,b)=>a[1].localeCompare(b[1],'fr')).map(([key,label])=>({key,label})));
+    RESEAUX = [{key:'',label:'(Tous)'}].concat(Array.from(reseauSet.entries()).sort((a,b)=>a[1].localeCompare(b[1],'fr')).map(([key,label])=>({key,label})));
   }
 
   function rebuildFilters(){
@@ -185,9 +196,15 @@ tSel.selectedIndex = 0;
 // Labels
     const lSel=document.getElementById('labelsFilter');
     lSel.innerHTML='';
-    const optAllL=document.createElement('option'); optAllL.value=''; optAllL.textContent='(Tous)'; lSel.appendChild(optAllL);
-    LABELS.slice(1).forEach(k=>{
-      const opt=document.createElement('option'); opt.value=k; opt.textContent=k; lSel.appendChild(opt);
+    LABELS.forEach(({key,label})=>{
+      const opt=document.createElement('option'); opt.value=key; opt.textContent=label; lSel.appendChild(opt);
+    });
+
+    // Réseaux
+    const rSel=document.getElementById('reseauxFilter');
+    rSel.innerHTML='';
+    RESEAUX.forEach(({key,label})=>{
+      const opt=document.createElement('option'); opt.value=key; opt.textContent=label; rSel.appendChild(opt);
     });
 
     // Légende pour les 11 types
@@ -235,6 +252,7 @@ tSel.selectedIndex = 0;
   function rowMatchesFacetFilters(row){
     const tSel=document.getElementById('travauxFilter');
     const lSel=document.getElementById('labelsFilter');
+    const rSel=document.getElementById('reseauxFilter');
 
     const tVals = (window.__travauxSet && window.__travauxSet.size)
       ? new Set([...window.__travauxSet])
@@ -242,6 +260,9 @@ tSel.selectedIndex = 0;
     const lVals = (window.__labelsSet && window.__labelsSet.size)
       ? new Set([...window.__labelsSet])
       : new Set(Array.from(lSel.selectedOptions).map(o=>o.value).filter(Boolean));
+    const rVals = (window.__reseauxSet && window.__reseauxSet.size)
+      ? new Set([...window.__reseauxSet])
+      : new Set(Array.from(rSel.selectedOptions).map(o=>o.value).filter(Boolean));
 
     let ok = true;
 
@@ -250,9 +271,14 @@ tSel.selectedIndex = 0;
       ok = rowCats.some(k => tVals.has(k));
     }
 
+    const rowLabelsAndReseaux = splitMulti(row["LABELS et RESEAUX"]).map(keyify);
+
     if(ok && lVals.size){
-      const rowLabels = splitMulti(row["LABELS et RESEAUX"]).map(keyify);
-      ok = rowLabels.some(k => lVals.has(k));
+      ok = rowLabelsAndReseaux.some(k => lVals.has(k));
+    }
+
+    if(ok && rVals.size){
+      ok = rowLabelsAndReseaux.some(k => rVals.has(k));
     }
 
     return ok;
@@ -324,6 +350,7 @@ tSel.selectedIndex = 0;
   });
   document.getElementById('travauxFilter').addEventListener('change',applyFilters);
   document.getElementById('labelsFilter').addEventListener('change',applyFilters);
+  document.getElementById('reseauxFilter').addEventListener('change',applyFilters);
   </script>
 
 <script>
@@ -545,6 +572,7 @@ tSel.selectedIndex = 0;
   function enhanceAllDropdowns(){
     enhanceMultiDropdown('travauxFilter', '__travauxSet');
     enhanceMultiDropdown('labelsFilter', '__labelsSet');
+    enhanceMultiDropdown('reseauxFilter', '__reseauxSet');
   }
 
   if(document.readyState === 'loading'){
