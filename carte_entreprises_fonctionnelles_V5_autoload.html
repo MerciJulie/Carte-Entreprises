@@ -763,7 +763,10 @@ tSel.selectedIndex = 0;
       const deptNamesInRadius = new Set(deptInRadius.map(function(it){ return normalize(field(it.row, ["Nom de l'entreprise","nom"])); }));
 
       // Complète avec des entreprises multidépartementales en repli (hors rayon),
-      // pour ne pas se limiter à celles déjà détectées dans le rayon.
+      // pour ne pas se limiter à celles déjà détectées dans le rayon. Le repli
+      // reste plafonné à une distance raisonnable (département ciblé + limitrophes
+      // environ) pour ne jamais proposer une entreprise à l'autre bout de la France.
+      const FALLBACK_MAX_KM = 80;
       const deptOutsideRadius = [];
       if (deptSlots > 0 && allRows.length){
         const byName = new Map();
@@ -787,7 +790,7 @@ tSel.selectedIndex = 0;
               : Infinity;
             if (d < bestDist){ bestDist = d; best = row; }
           });
-          if (best) deptOutsideRadius.push({row: best, dist: bestDist, departmental: true, outOfRadius: true});
+          if (best && bestDist <= FALLBACK_MAX_KM) deptOutsideRadius.push({row: best, dist: bestDist, departmental: true, outOfRadius: true});
         });
       }
 
