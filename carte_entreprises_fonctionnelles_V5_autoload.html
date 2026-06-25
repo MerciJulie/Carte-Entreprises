@@ -43,10 +43,10 @@
       <label for="jsonInput">Charger un fichier JSON</label>
       <input type="file" id="jsonInput" accept="application/json"/>
     </div>
-    <div class="group" style="flex:1">
+    <div class="group" style="flex:0 1 280px; max-width:280px;">
       <label for="refAddress">Adresse de référence</label>
       <div style="display:flex; gap:6px;">
-        <input id="refAddress" type="text" style="flex:1" placeholder="Ex. 10 Rue de la Paix, Paris" />
+        <input id="refAddress" type="text" style="flex:1; min-width:0;" placeholder="Ex. 10 Rue de la Paix, Paris" />
         <button id="searchBtn">Chercher</button>
       </div>
     </div>
@@ -54,11 +54,11 @@
       <label for="radiusRange">Rayon: <span id="radiusOut">30</span> km</label>
       <input id="radiusRange" type="range" min="0" max="100" step="1" value="30" />
     </div>
-    <div class="group">
+    <div class="group" style="width:170px; flex:0 0 170px;">
       <label for="travauxFilter">Travaux réalisables</label>
       <select id="travauxFilter"></select>
     </div>
-    <div class="group">
+    <div class="group" style="width:170px; flex:0 0 170px;">
       <label for="labelsFilter">Labels & réseaux</label>
       <select id="labelsFilter"></select>
     </div>
@@ -371,9 +371,10 @@ tSel.selectedIndex = 0;
 /* Dropdown multi avec surlignage bleu des éléments sélectionnés */
 .cm2-wrap { position: relative; display:block; }
 .cm2-trigger {
-  width: 100%; cursor: pointer; text-align: left;
-  padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff;
+  width: 100%; max-width: 100%; box-sizing: border-box; cursor: pointer; text-align: left;
+  padding: 8px 24px 8px 10px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff;
   font: inherit; line-height: 1.3;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   appearance: none; -webkit-appearance: none; -moz-appearance: none;
   background-image:
     linear-gradient(45deg, transparent 50%, #6b7280 50%),
