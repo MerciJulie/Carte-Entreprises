@@ -330,7 +330,7 @@ tSel.selectedIndex = 0;
     const file=e.target.files[0]; if(file) handleJSON(file);
   });
 
-  document.getElementById('searchBtn').addEventListener('click',()=>{
+  function searchRefAddress(){
     const q=document.getElementById('refAddress').value.trim();
     if(!q) return;
     fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(q))
@@ -340,6 +340,10 @@ tSel.selectedIndex = 0;
           setReference(parseFloat(r.lat),parseFloat(r.lon),r.display_name);
         }else{ alert('Adresse introuvable.'); }
       }).catch(e=>alert('Erreur recherche: '+e));
+  }
+  document.getElementById('searchBtn').addEventListener('click', searchRefAddress);
+  document.getElementById('refAddress').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){ e.preventDefault(); searchRefAddress(); }
   });
 
   const radiusRange=document.getElementById('radiusRange'); 
