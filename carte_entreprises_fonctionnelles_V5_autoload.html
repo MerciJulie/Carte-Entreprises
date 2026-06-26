@@ -26,7 +26,8 @@
       background:#fffffff2; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
       box-shadow:0 8px 28px rgba(15,23,42,.12), 0 1px 0 rgba(15,23,42,.04);
     }
-    #map { position:absolute; inset:calc(var(--bar-h) + 28px) 0 0 0; }
+    #map { position:absolute; inset:0; }
+    .leaflet-top.leaflet-left { margin-top: calc(var(--bar-h) + 28px); }
     .group { display:flex; flex-direction:column; font-size:13px; }
     label { font-size:11px; font-weight:700; margin-bottom:4px; color:#475569; text-transform:uppercase; letter-spacing:.03em; }
     input[type="text"], select, #radiusRange {
