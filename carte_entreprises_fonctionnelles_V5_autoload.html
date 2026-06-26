@@ -10,7 +10,7 @@
   <style>
 @media print{ body{padding-bottom:45mm;} }
 
-    :root { --bar-h: 88px; --accent: #0f766e; }
+    :root { --bar-h: 88px; --accent: #ea580c; --accent-dark: #c2410c; }
     html, body { height:100%; margin:0; }
     #topbar { position:fixed; top:14px; left:14px; right:14px; height:var(--bar-h); z-index:1000;
       display:flex; gap:14px; align-items:flex-start; padding:12px 20px; flex-wrap:wrap;
@@ -26,13 +26,13 @@
       background:#f8fafc; transition:border-color .15s, box-shadow .15s;
     }
     input[type="text"]:focus, select:focus {
-      outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(15,118,110,.12); background:#fff;
+      outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(234,88,12,.14); background:#fff;
     }
     #searchBtn {
       padding:8px 16px; border:none; border-radius:10px; background:var(--accent); color:#fff;
       font-weight:600; font-size:13px; cursor:pointer; transition:background .15s, transform .05s;
     }
-    #searchBtn:hover { background:#0d6259; }
+    #searchBtn:hover { background:var(--accent-dark); }
     #searchBtn:active { transform:scale(.97); }
     #radiusOut{font-weight:bold; color:var(--accent)}
     .legend { position:absolute; right:14px; bottom:14px; background:#fffffff2; backdrop-filter:blur(6px);
@@ -43,7 +43,7 @@
     .legend img{ width:18px; height:18px; object-fit:contain }
     .leaflet-popup-content-wrapper { border-radius:14px; box-shadow:0 10px 30px rgba(15,23,42,.18); }
     .leaflet-popup-content { margin:14px 16px; }
-    .popup h3{ margin:0 0 8px; font-size:16px; color:var(--accent); border-bottom:2px solid #e6f4f2; padding-bottom:6px; }
+    .popup h3{ margin:0 0 8px; font-size:16px; color:var(--accent); border-bottom:2px solid #fdecdd; padding-bottom:6px; }
     .popup .row{ margin:.3rem 0; font-size:13px; color:#374151; line-height:1.4 }
     .popup .row b{ color:#111827 }
   </style>
@@ -84,7 +84,7 @@
     </div>
     <div class="group" style="margin-left:auto;">
       <label style="visibility:hidden;">Export</label>
-      <button id="exportTop5Btn" onclick="exportTop5()" style="padding:9px 16px;border:none;border-radius:10px;background:#0f766e;color:#fff;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap;">
+      <button id="exportTop5Btn" onclick="exportTop5()" style="padding:9px 16px;border:none;border-radius:10px;background:#ea580c;color:#fff;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap;">
         Exporter Top 5 (PDF)
       </button>
     </div>
