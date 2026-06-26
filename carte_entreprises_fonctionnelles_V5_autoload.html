@@ -30,13 +30,28 @@
     .leaflet-top.leaflet-left { margin-top: calc(var(--bar-h) + 28px); }
     .group { display:flex; flex-direction:column; font-size:13px; }
     label { font-size:11px; font-weight:700; margin-bottom:4px; color:#475569; text-transform:uppercase; letter-spacing:.03em; }
-    input[type="text"], select, #radiusRange {
+    input[type="text"], select {
       padding:8px 12px; border:1px solid #e2e8f0; border-radius:10px; font-size:13px; min-width:150px;
       background:#f8fafc; transition:border-color .15s, box-shadow .15s;
     }
     input[type="text"]:focus, select:focus {
       outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(234,88,12,.14); background:#fff;
     }
+    #radiusRange {
+      -webkit-appearance:none; appearance:none; width:150px; height:6px; min-width:150px;
+      background:linear-gradient(to right, var(--accent) 0%, var(--accent) calc(var(--rv,30)*1%), #e2e8f0 calc(var(--rv,30)*1%), #e2e8f0 100%);
+      border-radius:999px; outline:none; cursor:pointer; margin-top:6px;
+    }
+    #radiusRange::-webkit-slider-thumb {
+      -webkit-appearance:none; appearance:none; width:18px; height:18px; border-radius:50%;
+      background:#fff; border:3px solid var(--accent); box-shadow:0 1px 4px rgba(0,0,0,.25); cursor:pointer;
+    }
+    #radiusRange::-moz-range-thumb {
+      width:14px; height:14px; border-radius:50%; background:#fff; border:3px solid var(--accent);
+      box-shadow:0 1px 4px rgba(0,0,0,.25); cursor:pointer;
+    }
+    #radiusRange::-moz-range-track { background:#e2e8f0; height:6px; border-radius:999px; }
+    #radiusRange::-moz-range-progress { background:var(--accent); height:6px; border-radius:999px; }
     #searchBtn {
       padding:8px 16px; border:none; border-radius:10px; background:var(--accent); color:#fff;
       font-weight:600; font-size:13px; cursor:pointer; transition:background .15s, transform .05s;
@@ -371,11 +386,14 @@ tSel.selectedIndex = 0;
     if(e.key === 'Enter'){ e.preventDefault(); searchRefAddress(); }
   });
 
-  const radiusRange=document.getElementById('radiusRange'); 
+  const radiusRange=document.getElementById('radiusRange');
   const radiusOut=document.getElementById('radiusOut');
-  radiusRange.addEventListener('input',()=>{ 
-    radiusOut.textContent=radiusRange.value; 
-    applyFilters(); 
+  function updateRadiusTrack(){ radiusRange.style.setProperty('--rv', radiusRange.value); }
+  updateRadiusTrack();
+  radiusRange.addEventListener('input',()=>{
+    radiusOut.textContent=radiusRange.value;
+    updateRadiusTrack();
+    applyFilters();
   });
   document.getElementById('travauxFilter').addEventListener('change',applyFilters);
   document.getElementById('labelsFilter').addEventListener('change',applyFilters);
