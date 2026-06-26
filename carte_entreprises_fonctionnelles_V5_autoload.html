@@ -14,9 +14,17 @@
     html, body { height:100%; margin:0; }
     #topbar { position:fixed; top:14px; left:14px; right:14px; height:var(--bar-h); z-index:1000;
       display:flex; gap:14px; align-items:flex-start; padding:12px 20px; flex-wrap:wrap;
-      background:#fffffff2; backdrop-filter:blur(8px); border-radius:18px;
-      box-shadow:0 8px 28px rgba(15,23,42,.12), 0 1px 0 rgba(15,23,42,.04);
+      border-radius:18px;
       font-family: 'Segoe UI', system-ui, sans-serif;
+    }
+    /* Le flou (backdrop-filter) est isolé dans un calque séparé, derrière le contenu,
+       pour éviter qu'il ne "déborde" en rectangle droit hors des coins arrondis
+       (bug de rendu de certains navigateurs quand backdrop-filter est sur l'élément
+       qui contient aussi des enfants positionnés, comme les menus déroulants). */
+    #topbar::before {
+      content:''; position:absolute; inset:0; z-index:-1; border-radius:18px;
+      background:#fffffff2; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+      box-shadow:0 8px 28px rgba(15,23,42,.12), 0 1px 0 rgba(15,23,42,.04);
     }
     #map { position:absolute; inset:calc(var(--bar-h) + 28px) 0 0 0; }
     .group { display:flex; flex-direction:column; font-size:13px; }
