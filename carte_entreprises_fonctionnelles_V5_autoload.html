@@ -465,39 +465,42 @@ tSel.selectedIndex = 0;
       const raw = window.RAW;
       if(!Array.isArray(raw) || !raw.length){ box.innerHTML='<div class="cr-none">Données non chargées</div>'; box.style.display='block'; return; }
 
-      // Filtre : toutes les entreprises dont le nom contient le terme
-      const seen = new Set();
-      const matches = [];
-      raw.forEach(function(row){
+      // Une entrée par ligne de données (pas de déduplication) — permet de voir chaque département
+      const matches = raw.filter(function(row){
         const nom = row["Nom de l'entreprise"]||'';
-        const key = normalize(nom);
-        if(key.includes(t) && !seen.has(key)){
-          seen.add(key);
-          matches.push(row);
-        }
+        return normalize(nom).includes(t);
       });
       matches.sort((a,b)=>{
         const an=normalize(a["Nom de l'entreprise"]||''), bn=normalize(b["Nom de l'entreprise"]||'');
         const ai=an.indexOf(t), bi=bn.indexOf(t);
-        return (ai-bi) || an.localeCompare(bn);
+        if(ai!==bi) return ai-bi;
+        if(an!==bn) return an.localeCompare(bn);
+        // Même nom → trier par numéro de département
+        const ad=parseInt((a["Département"]||a["Departement"]||'999').toString())||999;
+        const bd=parseInt((b["Département"]||b["Departement"]||'999').toString())||999;
+        return ad-bd;
       });
 
       if(!matches.length){ box.innerHTML='<div class="cr-none">Aucune entreprise trouvée</div>'; box.style.display='block'; return; }
 
-      box.innerHTML = matches.slice(0,12).map(function(row,i){
+      const limited = matches.slice(0,20);
+      box.innerHTML = limited.map(function(row,i){
         const nom = row["Nom de l'entreprise"]||'—';
         const dept = (row["Département"]||row["Departement"]||'').toString().trim();
-        const sub = dept ? '<span style="color:#94a3b8;font-size:11px;margin-left:6px;">'+dept+'</span>' : '';
-        return '<div class="cr-item" data-idx="'+i+'">'+nom+sub+'</div>';
+        const ville = (row["Ville"]||row["ville"]||'').toString().trim();
+        // Badge département orange si présent
+        const badge = dept
+          ? '<span style="display:inline-block;background:#fdecdd;color:var(--accent);font-size:10px;font-weight:700;border-radius:5px;padding:1px 5px;margin-left:7px;">'+dept+'</span>'
+          : '';
+        const sub = ville ? '<span style="color:#94a3b8;font-size:11px;margin-left:6px;">'+ville+'</span>' : '';
+        return '<div class="cr-item" data-idx="'+i+'">'+nom+badge+sub+'</div>';
       }).join('');
       box.style.display='block';
 
-      // Associer chaque item à sa ligne
-      const limited = matches.slice(0,12);
       box.querySelectorAll('.cr-item').forEach(function(el, i){
         el.addEventListener('mousedown', function(e){
           e.preventDefault();
-          selectCompany(limited[i]);
+          selectRow(limited[i]);
           inp.value = limited[i]["Nom de l'entreprise"]||'';
           closeResults();
           clearBtn.style.display='block';
@@ -505,27 +508,22 @@ tSel.selectedIndex = 0;
       });
     }
 
-    function selectCompany(row){
+    function selectRow(row){
       const allMarkers = window.markers;
       if(!Array.isArray(allMarkers)) return;
-      const nom = normalize(row["Nom de l'entreprise"]||'');
-
-      // Chercher tous les marqueurs correspondant à ce nom (multi-dép possible)
-      const found = allMarkers.filter(function(m){
-        return normalize((m.__row&&m.__row["Nom de l'entreprise"])||'') === nom;
-      });
-      if(!found.length) return;
-
-      if(found.length === 1){
-        zoomToMarker(found[0]);
-      } else {
-        // Multi-dép : zoom sur l'ensemble des points
-        const latlngs = found.map(m=>m.getLatLng());
-        const bounds = L.latLngBounds(latlngs);
-        map.fitBounds(bounds.pad(0.3));
-        // Ouvre le popup du premier
-        setTimeout(()=>zoomToMarker(found[0], false), 600);
+      // Chercher le marqueur dont __row est exactement cette ligne (référence objet)
+      let found = allMarkers.find(m => m.__row === row);
+      // Fallback : même nom + même département si la référence ne correspond pas
+      if(!found){
+        const nom = normalize(row["Nom de l'entreprise"]||'');
+        const dept = (row["Département"]||row["Departement"]||'').toString().trim();
+        found = allMarkers.find(function(m){
+          const r = m.__row||{};
+          return normalize(r["Nom de l'entreprise"]||'')===nom
+            && (r["Département"]||r["Departement"]||'').toString().trim()===dept;
+        });
       }
+      if(found) zoomToMarker(found);
     }
 
     function zoomToMarker(m, doZoom){
