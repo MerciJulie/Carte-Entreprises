@@ -82,6 +82,29 @@
     .leaflet-marker-icon { filter: drop-shadow(0 3px 4px rgba(15,23,42,.35)); }
     .popup .row{ margin:.3rem 0; font-size:13px; color:#374151; line-height:1.4 }
     .popup .row b{ color:#111827 }
+
+    /* Recherche par nom d'entreprise */
+    #companySearchWrap { position:relative; }
+    #companySearch { width:100%; box-sizing:border-box; padding-right:28px; }
+    #companySearchClear {
+      position:absolute; right:8px; top:50%; transform:translateY(-50%);
+      background:none; border:none; cursor:pointer; color:#94a3b8; font-size:16px;
+      line-height:1; padding:0; display:none;
+    }
+    #companySearchClear:hover { color:var(--accent); }
+    #companyResults {
+      position:absolute; top:calc(100% + 4px); left:0; right:0; z-index:2000;
+      background:#fff; border:1px solid #e2e8f0; border-radius:10px;
+      box-shadow:0 8px 24px rgba(15,23,42,.14); max-height:220px; overflow-y:auto;
+      display:none;
+    }
+    #companyResults .cr-item {
+      padding:8px 12px; font-size:13px; cursor:pointer; border-bottom:1px solid #f1f5f9;
+      transition:background .1s;
+    }
+    #companyResults .cr-item:last-child { border-bottom:none; }
+    #companyResults .cr-item:hover, #companyResults .cr-item.cr-active { background:#fff7f4; color:var(--accent); }
+    #companyResults .cr-none { padding:8px 12px; font-size:13px; color:#94a3b8; }
   </style>
 
 <style>
@@ -100,6 +123,14 @@
       <div style="display:flex; gap:6px;">
         <input id="refAddress" type="text" style="flex:1; min-width:0;" placeholder="Ex. 10 Rue de la Paix, Paris" />
         <button id="searchBtn">Chercher</button>
+      </div>
+    </div>
+    <div class="group" style="flex:0 1 260px; min-width:180px;">
+      <label for="companySearch">Rechercher une entreprise</label>
+      <div id="companySearchWrap">
+        <input id="companySearch" type="text" placeholder="Nom de l'entreprise…" autocomplete="off" />
+        <button id="companySearchClear" title="Effacer">✕</button>
+        <div id="companyResults"></div>
       </div>
     </div>
     <div class="group">
@@ -153,6 +184,7 @@
     attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
   }).addTo(map);
   const cluster=L.markerClusterGroup({ maxClusterRadius: 1 });
+  window.clusterGroup = cluster;
   map.addLayer(cluster);
 
   let refMarker=null,refCircle=null;
@@ -417,6 +449,109 @@ tSel.selectedIndex = 0;
   document.getElementById('travauxFilter').addEventListener('change',applyFilters);
   document.getElementById('labelsFilter').addEventListener('change',applyFilters);
   document.getElementById('reseauxFilter').addEventListener('change',applyFilters);
+
+  // -------- Recherche par nom d'entreprise --------
+  (function(){
+    const inp = document.getElementById('companySearch');
+    const box = document.getElementById('companyResults');
+    const clearBtn = document.getElementById('companySearchClear');
+
+    function closeResults(){ box.style.display='none'; }
+
+    function showResults(term){
+      const t = normalize(term);
+      if(!t){ closeResults(); clearBtn.style.display='none'; return; }
+      clearBtn.style.display='block';
+      const raw = window.RAW;
+      if(!Array.isArray(raw) || !raw.length){ box.innerHTML='<div class="cr-none">Données non chargées</div>'; box.style.display='block'; return; }
+
+      // Filtre : toutes les entreprises dont le nom contient le terme
+      const seen = new Set();
+      const matches = [];
+      raw.forEach(function(row){
+        const nom = row["Nom de l'entreprise"]||'';
+        const key = normalize(nom);
+        if(key.includes(t) && !seen.has(key)){
+          seen.add(key);
+          matches.push(row);
+        }
+      });
+      matches.sort((a,b)=>{
+        const an=normalize(a["Nom de l'entreprise"]||''), bn=normalize(b["Nom de l'entreprise"]||'');
+        const ai=an.indexOf(t), bi=bn.indexOf(t);
+        return (ai-bi) || an.localeCompare(bn);
+      });
+
+      if(!matches.length){ box.innerHTML='<div class="cr-none">Aucune entreprise trouvée</div>'; box.style.display='block'; return; }
+
+      box.innerHTML = matches.slice(0,12).map(function(row,i){
+        const nom = row["Nom de l'entreprise"]||'—';
+        const dept = (row["Département"]||row["Departement"]||'').toString().trim();
+        const sub = dept ? '<span style="color:#94a3b8;font-size:11px;margin-left:6px;">'+dept+'</span>' : '';
+        return '<div class="cr-item" data-idx="'+i+'">'+nom+sub+'</div>';
+      }).join('');
+      box.style.display='block';
+
+      // Associer chaque item à sa ligne
+      const limited = matches.slice(0,12);
+      box.querySelectorAll('.cr-item').forEach(function(el, i){
+        el.addEventListener('mousedown', function(e){
+          e.preventDefault();
+          selectCompany(limited[i]);
+          inp.value = limited[i]["Nom de l'entreprise"]||'';
+          closeResults();
+          clearBtn.style.display='block';
+        });
+      });
+    }
+
+    function selectCompany(row){
+      const allMarkers = window.markers;
+      if(!Array.isArray(allMarkers)) return;
+      const nom = normalize(row["Nom de l'entreprise"]||'');
+
+      // Chercher tous les marqueurs correspondant à ce nom (multi-dép possible)
+      const found = allMarkers.filter(function(m){
+        return normalize((m.__row&&m.__row["Nom de l'entreprise"])||'') === nom;
+      });
+      if(!found.length) return;
+
+      if(found.length === 1){
+        zoomToMarker(found[0]);
+      } else {
+        // Multi-dép : zoom sur l'ensemble des points
+        const latlngs = found.map(m=>m.getLatLng());
+        const bounds = L.latLngBounds(latlngs);
+        map.fitBounds(bounds.pad(0.3));
+        // Ouvre le popup du premier
+        setTimeout(()=>zoomToMarker(found[0], false), 600);
+      }
+    }
+
+    function zoomToMarker(m, doZoom){
+      if(doZoom !== false) map.setView(m.getLatLng(), 13, {animate:true});
+      // Extraire le marker de son cluster pour pouvoir ouvrir le popup
+      if(window.clusterGroup){
+        window.clusterGroup.zoomToShowLayer(m, function(){
+          m.openPopup();
+        });
+      } else {
+        m.openPopup();
+      }
+    }
+
+    inp.addEventListener('input', function(){ showResults(inp.value); });
+    inp.addEventListener('focus', function(){ if(inp.value) showResults(inp.value); });
+    inp.addEventListener('keydown', function(e){
+      if(e.key==='Escape'){ closeResults(); inp.blur(); }
+    });
+    clearBtn.addEventListener('click', function(){
+      inp.value=''; clearBtn.style.display='none'; closeResults(); inp.focus();
+    });
+    document.addEventListener('click', function(e){
+      if(!document.getElementById('companySearchWrap').contains(e.target)) closeResults();
+    });
+  })();
   </script>
 
 <script>
