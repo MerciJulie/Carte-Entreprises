@@ -224,7 +224,7 @@
     const mob=row["Mobile"]||'—';
     const mail=(row["E-Mail"]||'').trim()||'—';
     const labels=row["LABELS et RESEAUX"]||'—';
-    const charte=(row["Signature charte de confiance"]||'').trim()||'—';
+    const contactNom=(row["Nom personne contact"]||'').trim()||'—';
     const reco=row["RECOMMANDATION"]||'—';
     const react=row["REACTIVITE"]||'—';
     const secteur=(row["Secteur exclusif"]||'').toString().trim();
@@ -240,7 +240,7 @@
       +(mob!=='—'?'<a href="tel:'+mob.replace(/\s/g,'')+'" title="Appeler mobile" style="display:inline-flex;align-items:center;gap:4px;color:var(--accent);text-decoration:none;font-weight:600"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>'+mob+'</a>':'Mob. —')
       +' — '+(mail!=='—'?'<a href="mailto:'+mail+'">'+mail+'</a>':'—')+'</div>'
       +'<div class="row"><b>Labels & réseaux:</b> '+labels+'</div>'
-      +'<div class="row"><b>Charte signée:</b> '+charte+'</div>'
+      +'<div class="row"><b>Interlocuteur:</b> '+contactNom+'</div>'
       +'<div class="row"><b>Recommandation:</b> '+reco+'</div>'
       +'<div class="row"><b>Réactivité:</b> '+react+'</div>'
       +secteurHtml
