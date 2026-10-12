@@ -179,9 +179,9 @@
   function haversineKm(a,b){const R=6371;const dLat=(b.lat-a.lat)*Math.PI/180;const dLon=(b.lng-a.lng)*Math.PI/180;const lat1=a.lat*Math.PI/180;const lat2=b.lat*Math.PI/180;const h=Math.sin(dLat/2)**2+Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
 
   const map=L.map('map').setView([46.7,2.5],6);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
     maxZoom:19,
-    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   }).addTo(map);
   const cluster=L.markerClusterGroup({ maxClusterRadius: 1 });
   window.clusterGroup = cluster;
@@ -202,7 +202,7 @@
 
   let RAW=[],markers=[],LABELS=[],RESEAUX=[];
   const ALLOWED_TRAVAUX = [
-    "sanitaires",
+    "sanitaire",
     "accessibilité extérieure",
     "tout corps d'état",
     "carrelage",
@@ -329,7 +329,7 @@ tSel.selectedIndex = 0;
     // s'appuyer sur une référence fiable, sans dépendre de la portée lexicale
     // de "markers"/"RAW" entre balises <script>.
     window.markers = markers;
-    window.RAW = RAW;
+    window.RAW = rows;
   }
 
   // Renvoie true si le marqueur m respecte les filtres actuellement actifs
