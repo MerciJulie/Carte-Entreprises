@@ -947,13 +947,25 @@ tSel.selectedIndex = 0;
       // multidépartementale à recommandation égale, 3) distance croissante.
       const pool = [];
       const namesInRadius = new Set();
+      // Anti-doublon : une multidépartementale peut avoir plusieurs lignes dans le
+      // rayon (ex: une adresse dans le 7e et une autre dans un département voisin).
+      // On ne garde que la ligne la plus proche du point de référence.
+      const deptBestInRadius = new Map();
       items.forEach(function(it){
         if (isExcludedReco(it.row)) return;
         const key = normalize(field(it.row, ["Nom de l'entreprise","nom"]));
         const dept = isDepartmentalName(key);
-        if (dept) namesInRadius.add(key);
-        pool.push({row: it.row, dist: it.dist, departmental: dept, outOfRadius: false});
+        if (dept){
+          namesInRadius.add(key);
+          const prev = deptBestInRadius.get(key);
+          if (!prev || it.dist < prev.dist){
+            deptBestInRadius.set(key, {row: it.row, dist: it.dist, departmental: true, outOfRadius: false});
+          }
+          return;
+        }
+        pool.push({row: it.row, dist: it.dist, departmental: false, outOfRadius: false});
       });
+      deptBestInRadius.forEach(function(entry){ pool.push(entry); });
 
       // Repli hors rayon : multidépartementales pas déjà présentes dans le rayon.
       // Plafonné à une distance raisonnable (département ciblé + limitrophes environ).
