@@ -421,10 +421,13 @@ tSel.selectedIndex = 0;
     const file=e.target.files[0]; if(file) handleJSON(file);
   });
 
+  // Recherche d'adresse limitée au territoire français (métropole + outre-mer).
+  const NOMINATIM_FR = 'https://nominatim.openstreetmap.org/search?format=json&countrycodes=fr,gp,mq,gf,re,yt&q=';
+
   function searchRefAddress(){
     const q=document.getElementById('refAddress').value.trim();
     if(!q) return;
-    fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(q))
+    fetch(NOMINATIM_FR+encodeURIComponent(q))
       .then(r=>r.json()).then(results=>{
         if(results&&results[0]){
           const r=results[0];
@@ -849,7 +852,7 @@ tSel.selectedIndex = 0;
   }
   async function geocodeAddress(q){
     try{
-      const r = await fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(q), {headers:{'Accept':'application/json'}});
+      const r = await fetch(NOMINATIM_FR+encodeURIComponent(q), {headers:{'Accept':'application/json'}});
       if(!r.ok) return null;
       const arr = await r.json();
       if(arr && arr[0]){
