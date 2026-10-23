@@ -21063,7 +21063,7 @@
     "Nom de l'entreprise": "TKE",
     "Département": "France",
     "Secteur exclusif": "National",
-    "RECOMMANDATION": "BIEN",
+    "RECOMMANDATION": "A EVITER",
     "REACTIVITE": "",
     "Téléphone": "01 41 11 43 50",
     "Mobile": "09 69 39 98 98",
@@ -27358,5 +27358,25 @@
     "SIRET": "",
     "Latitude": "",
     "Longitude": ""
+  },
+  {
+    "Nom de l'entreprise": "Thierry CAVAIGNAC",
+    "Département": "93",
+    "Secteur exclusif": "93 principalement mais toute IDF possible",
+    "RECOMMANDATION": "A TESTER",
+    "REACTIVITE": "NON CONNUE",
+    "Téléphone": "",
+    "Mobile": "06 50 04 48 10",
+    "E-Mail": "thierrycavaignac@gmail.com",
+    "Nom personne contact": "Thierry CAVAIGNAC",
+    "LABELS et RESEAUX": "",
+    "Signature charte de confiance": "",
+    "Travaux réalisables": "Sanitaire",
+    "Travaux réalisables 2": "",
+    "adresse": "37 rue des Clochettes, 93150 Le Blanc Mesnil",
+    "Adresse finale": "37 rue des Clochettes, 93150 Le Blanc Mesnil",
+    "SIRET": "890 578 875",
+    "Latitude": 48.920174,
+    "Longitude": 2.465155
   }
 ]
