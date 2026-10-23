@@ -27363,7 +27363,7 @@
     "Nom de l'entreprise": "Thierry CAVAIGNAC",
     "Département": "93",
     "Secteur exclusif": "93 principalement mais toute IDF possible",
-    "RECOMMANDATION": "A TESTER",
+    "RECOMMANDATION": "BIEN",
     "REACTIVITE": "NON CONNUE",
     "Téléphone": "",
     "Mobile": "06 50 04 48 10",
@@ -27378,5 +27378,25 @@
     "SIRET": "890 578 875",
     "Latitude": 48.920174,
     "Longitude": 2.465155
+  },
+  {
+    "Nom de l'entreprise": "SARL WIECZOREK Frères",
+    "Département": "77",
+    "Secteur exclusif": "",
+    "RECOMMANDATION": "A TESTER",
+    "REACTIVITE": "NON CONNUE",
+    "Téléphone": "",
+    "Mobile": "06 14 24 78 73",
+    "E-Mail": "",
+    "Nom personne contact": "Stéphane WIECZOREK",
+    "LABELS et RESEAUX": "",
+    "Signature charte de confiance": "",
+    "Travaux réalisables": "Sanitaire, Accessibilité extérieure, Tout corps d'état",
+    "Travaux réalisables 2": "",
+    "adresse": "2 rue du chêne, 77390 Chaumes en Brie",
+    "Adresse finale": "2 rue du chêne, 77390 Chaumes en Brie",
+    "SIRET": "",
+    "Latitude": 48.6566056,
+    "Longitude": 2.819925
   }
 ]
